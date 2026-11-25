@@ -20,7 +20,7 @@ const needsLogin = JSON.stringify({ BackendState: "NeedsLogin", Self: { Online: 
 
 test("status riconosce Tailscale già connesso", async () => {
   const { exec } = fakeExec([online])
-  const vpn = new VpnManager({ exec, sleep: async () => {} })
+  const vpn = new VpnManager({ exec, sleep: async () => {}, platform: "win32" })
   const status = await vpn.status()
   assert.equal(status.installed, true)
   assert.equal(status.running, true)
@@ -29,7 +29,7 @@ test("status riconosce Tailscale già connesso", async () => {
 
 test("ensure non fa nulla se Tailscale è già attivo", async () => {
   const { exec, calls } = fakeExec([online])
-  const vpn = new VpnManager({ exec, sleep: async () => {} })
+  const vpn = new VpnManager({ exec, sleep: async () => {}, platform: "win32" })
   const result = await vpn.ensure()
   assert.equal(result.changed, false)
   assert.equal(result.message, "Tailscale era già attivo")
@@ -45,7 +45,7 @@ test("ensure avvia il servizio e tailscale up se è fermo", async () => {
     "",
     online,
   ])
-  const vpn = new VpnManager({ exec, sleep: async () => {} })
+  const vpn = new VpnManager({ exec, sleep: async () => {}, platform: "win32" })
   const result = await vpn.ensure()
   assert.equal(result.changed, true)
   assert.equal(result.online, true)
@@ -55,7 +55,7 @@ test("ensure avvia il servizio e tailscale up se è fermo", async () => {
 
 test("ensure segnala il login necessario", async () => {
   const { exec } = fakeExec([stopped, "Running", stopped, "", needsLogin])
-  const vpn = new VpnManager({ exec, sleep: async () => {} })
+  const vpn = new VpnManager({ exec, sleep: async () => {}, platform: "win32" })
   const result = await vpn.ensure()
   assert.equal(result.online, false)
   assert.equal(result.backend, "NeedsLogin")
