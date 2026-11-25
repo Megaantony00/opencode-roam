@@ -100,10 +100,18 @@ keytool -genkeypair -v \
 ```
 
 Keep the `.jks` file and its passwords out of the repository and back them up.
-Configure a Gradle `signingConfigs.release` using a local ignored properties file
-or CI secrets, build the release APK/AAB, then verify it with `apksigner` and
-publish its SHA-256. If the key is lost, updates under the same application ID
-will no longer be possible; if it leaks, someone else can sign updates.
+Copy `keystore.properties.example` to `android/keystore.properties`, fill it in,
+place the `.jks` at the path it references, then build the signed release:
+
+```bash
+cd android
+./gradlew assembleRelease
+```
+
+The output is `app/build/outputs/apk/release/app-release.apk`. Verify it with
+`apksigner` and publish its SHA-256. If the key is lost, updates under the same
+application ID will no longer be possible; if it leaks, someone else can sign
+updates.
 
 `dist/` is only a local, Git-ignored staging folder for APK/AAB files and
 checksums. It is not part of the source tree.

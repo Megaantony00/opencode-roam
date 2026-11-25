@@ -2,6 +2,12 @@ plugins {
     id "com.android.application"
 }
 
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace "io.github.opencoderemote.app"
     compileSdk 36
@@ -10,11 +16,28 @@ android {
         applicationId "io.github.opencoderemote.app"
         minSdk 26
         targetSdk 36
-        versionCode 1
-        versionName "0.1.0"
+        versionCode 2
+        versionName "0.1.1"
 
         // Change this to your GitHub "owner/repository" before publishing updates.
         buildConfigField "String", "GITHUB_REPO", "\"Megaantony00/opencode-roam\""
+    }
+
+    signingConfigs {
+        release {
+            if (keystorePropertiesFile.exists()) {
+                storeFile rootProject.file(keystoreProperties["storeFile"])
+                storePassword keystoreProperties["storePassword"]
+                keyAlias keystoreProperties["keyAlias"]
+                keyPassword keystoreProperties["keyPassword"]
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+        }
     }
 
     buildFeatures {

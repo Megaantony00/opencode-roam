@@ -1,6 +1,6 @@
 {
   "name": "opencode-roam",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "description": "Self-hosted web/PWA remote for OpenCode, with optional Telegram notifications and approvals.",
