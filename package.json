@@ -1,0 +1,29 @@
+{
+  "name": "opencode-roam",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Self-hosted web/PWA remote for OpenCode, with optional Telegram notifications and approvals.",
+  "license": "GPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Megaantony00/opencode-roam.git"
+  },
+  "homepage": "https://github.com/Megaantony00/opencode-roam#readme",
+  "bugs": {
+    "url": "https://github.com/Megaantony00/opencode-roam/issues"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "setup": "node src/setup.mjs",
+    "setup:web": "node src/setup.mjs --web-only",
+    "setup:telegram": "node src/setup.mjs --telegram",
+    "start": "node src/index.mjs",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@opencode/client": "2.3.2"
+  }
+}

@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0f1115" />
+    <title>OpenCode Roam — demo</title>
+    <link rel="stylesheet" href="../../src/web/style.css" />
+  </head>
+  <body>
+    <header>
+      <div class="brand">
+        <span class="dot online"></span>
+        <img class="brand-icon" src="../../src/web/icon-192.png" alt="" width="28" height="28" />
+        <strong>Roam</strong>
+        <span class="badge">connesso</span>
+        <span class="version">v1</span>
+      </div>
+      <select aria-label="Sessione attiva">
+        <option>Demo project</option>
+      </select>
+    </header>
+
+    <main id="chat" aria-live="polite">
+      <div class="msg-wrap user">
+        <div class="msg user markdown">
+          <p>Aggiungi i test per il parser Markdown e aggiorna il README.</p>
+        </div>
+        <button class="quote" type="button" aria-label="Cita">❝</button>
+      </div>
+
+      <div class="msg-wrap assistant">
+        <div class="msg assistant markdown">
+          <p>Fatto. Ho aggiunto sei test e aggiornato la sezione <strong>Testing</strong>.</p>
+          <ul>
+            <li>titoli, liste e link;</li>
+            <li>blocchi di codice e tabelle;</li>
+            <li>citazioni e righe orizzontali.</li>
+          </ul>
+          <pre><code>npm test
+
+ℹ tests 64
+ℹ pass 64
+ℹ fail 0</code></pre>
+          <p>Il README ora spiega anche il setup <code>--web-only</code> e il token web.</p>
+        </div>
+        <button class="quote" type="button" aria-label="Cita">❝</button>
+      </div>
+
+      <section class="card">
+        <h3>🔐 Permesso richiesto</h3>
+        <div class="meta">Sessione: Demo project
+Azione: shell
+Risorsa: npm test</div>
+        <div class="actions">
+          <button type="button">✅ Approva una volta</button>
+          <button type="button">♾️ Approva sempre</button>
+          <button type="button">❌ Nega</button>
+        </div>
+      </section>
+
+      <div class="msg notice">Demo con dati fittizi. Nessuna sessione reale.</div>
+    </main>
+
+    <form id="composer">
+      <div class="composer-row">
+        <button id="attach" type="button" class="attach" aria-label="Allega file">📎</button>
+        <textarea id="input" rows="1" placeholder="Scrivi a OpenCode…"></textarea>
+        <button id="send" type="submit">Invia</button>
+      </div>
+    </form>
+  </body>
+</html>

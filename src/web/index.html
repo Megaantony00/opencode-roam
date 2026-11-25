@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
+    />
+    <meta name="theme-color" content="#0f1115" />
+    <title>OpenCode Roam</title>
+    <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png?v=1" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=1" />
+    <link rel="manifest" href="/manifest.webmanifest?v=1" />
+    <link rel="stylesheet" href="/style.css?v=1" />
+    <script src="/app.js?v=1" defer></script>
+  </head>
+  <body>
+    <header>
+      <div class="brand">
+        <span class="dot" id="dot"></span>
+        <img class="brand-icon" src="/icon-192.png?v=1" alt="" width="28" height="28" />
+        <strong>Roam</strong>
+        <span class="badge" id="status">connessione…</span>
+        <span class="version">v1</span>
+      </div>
+      <select id="sessions" aria-label="Sessione attiva"></select>
+    </header>
+
+    <div class="vpn-banner" id="vpn-banner" role="region" aria-label="Stato connessione" hidden>
+      <div class="vpn-copy">
+        <strong>Connessione persa</strong>
+        <span>Tailscale o PC/bot non raggiungibile.</span>
+      </div>
+      <div class="vpn-actions">
+        <a
+          class="vpn-open"
+          id="vpn-open"
+          href="tailscale://navigate"
+          >Apri Tailscale</a
+        >
+        <button class="vpn-retry" id="vpn-retry" type="button">Riprova</button>
+      </div>
+    </div>
+
+    <main id="chat" aria-live="polite"></main>
+
+    <button id="quote-selection" class="quote-selection" type="button" hidden>
+      ❝ Cita selezione
+    </button>
+
+    <form id="composer">
+      <div id="attachments" class="attachments" hidden></div>
+      <div class="composer-row">
+        <button id="attach" type="button" class="attach" title="Allega file" aria-label="Allega file">
+          <svg
+            class="attach-svg"
+            viewBox="0 0 24 24"
+            width="20"
+            height="20"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path
+              d="M21.44 11.05l-8.49 8.49a6 6 0 0 1-8.49-8.49l8.49-8.49a4 4 0 0 1 5.66 5.66l-8.49 8.49a2 2 0 0 1-2.83-2.83l7.78-7.78"
+            />
+          </svg>
+          <span class="attach-emoji" aria-hidden="true">📎</span>
+        </button>
+        <textarea
+          id="input"
+          rows="1"
+          placeholder="Scrivi a OpenCode…"
+          autocomplete="off"
+          enterkeyhint="send"
+        ></textarea>
+        <button id="send" type="submit">Invia</button>
+      </div>
+      <input id="files" type="file" multiple hidden />
+    </form>
+  </body>
+</html>
