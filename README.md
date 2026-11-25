@@ -307,9 +307,9 @@ See [SECURITY.md](SECURITY.md) for the vulnerability reporting process.
 - **Bridge**: update manually with `git pull`, `npm install`, and a restart.
   Automatic server updates are not enabled by default because the bridge can run
   commands on your PC.
-- **APK** (optional prototype): checks GitHub Releases for updates. Android
-  requires user confirmation to install a sideloaded APK; silent installation is
-  not allowed.
+- **APK** (optional signed prototype): checks GitHub Releases for updates.
+  Android requires user confirmation to install a sideloaded APK; silent
+  installation is not allowed. Releases: https://github.com/Megaantony00/opencode-roam/releases
 
 ## Testing
 
@@ -382,14 +382,14 @@ Remove it with `uninstall-autostart.ps1`. The startup entry runs
   localization is planned.
 - No hosted service. GitHub Pages cannot run this app; it needs a Node process on
   your PC.
-- The Android APK is an optional prototype; a signed public release is not ready yet.
+- The Android APK is an optional signed prototype; it is not distributed through a store yet.
 
 ## Roadmap
 
 - Android wrapper in `android/`: native **Quote** action, text share target,
   offline/Tailscale screen, encrypted token, settings to change the bridge
-  URL/token later, logout, and update checker. A debug APK builds; signed releases
-  and store distribution are next.
+  URL/token later, logout, and update checker. Signed GitHub releases are
+  available; store distribution is next.
 - English UI localization.
 - Demo screenshots generated with fake data.
 - Optional Docker packaging.

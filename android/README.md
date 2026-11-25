@@ -16,7 +16,7 @@ web page cannot provide:
 
 ## Status
 
-Prototype, debug build only. It is not signed for release and is not on a store.
+Prototype with a signed GitHub release. It is not distributed through a store.
 The source lives in `android/` so the bridge, web UI, and APK version together.
 
 ## Build
@@ -84,8 +84,8 @@ buildConfigField "String", "GITHUB_REPO", "\"Megaantony00/opencode-roam\""
 ```
 
 The checker reads the latest GitHub release and opens its page. Silent APK
-installation is not allowed by Android; a signed release and checksums are
-required before distributing a public APK.
+installation is not allowed by Android; signed releases and checksums are
+provided through GitHub Releases.
 
 ## Release signing
 
@@ -139,12 +139,12 @@ Tested on Android 15 with the debug APK:
 - **Copia** uses the Android clipboard;
 - sharing text to OpenCode Roam inserts it as a quote.
 
-Not yet verified end-to-end: update checker. It needs a published GitHub release
-to compare against; it remains a best-effort check that opens the release page.
+Verified end-to-end with v0.1.0 against the v0.1.1 release: the update dialog
+appeared and opened the release page.
 
 ## Limitations
 
 - WebView wrapper, not a Trusted Web Activity; it is a separate UI shell.
 - No background push notifications yet; use the PWA/web UI or Telegram.
 - No image share target yet.
-- No release signing / store distribution yet.
+- Release signing is configured; store distribution is not available yet.
