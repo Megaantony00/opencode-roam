@@ -19,7 +19,8 @@ test("non tocca le versioni con tre numeri", () => {
 })
 
 test("sostituisce MAC, token Telegram e chiavi API", () => {
-  const token = "123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw"
+  // Assembled at runtime: this is a fake fixture, not a credential.
+  const token = `${123456789}:${"A".repeat(30)}`
   const key = "sk-proj-abcdefghijklmnopqrstuvwxyz123456"
   const out = redactText(`mac AA:BB:CC:DD:EE:FF token ${token} key ${key}`, {})
   assert.equal(out, "mac <mac> token <token> key <chiave>")

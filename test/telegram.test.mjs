@@ -4,7 +4,7 @@ import { createServer } from "node:http"
 
 import { TelegramApi, TelegramError } from "../src/telegram.mjs"
 
-const TOKEN = "123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw"
+const TOKEN = "test-token"
 
 async function withServer(handler, fn) {
   const server = createServer(handler)

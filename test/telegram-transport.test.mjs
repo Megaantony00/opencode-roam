@@ -6,7 +6,7 @@ import { createServer } from "node:http"
 import { TelegramTransport } from "../src/transports/telegram.mjs"
 import { TelegramApi } from "../src/telegram.mjs"
 
-const TOKEN = "123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw"
+const TOKEN = "test-token"
 
 class MockTelegramServer {
   constructor() {
