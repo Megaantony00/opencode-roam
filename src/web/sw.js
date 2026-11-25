@@ -1,5 +1,5 @@
-const CACHE = "ocb-shell-v1"
-const SHELL = ["/offline.html", "/offline.css", "/offline.js", "/icon-192.png"]
+const CACHE = "ocb-shell-v2"
+const SHELL = ["/offline.html", "/offline.css", "/offline.js", "/i18n.js", "/icon-192.png"]
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

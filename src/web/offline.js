@@ -1,3 +1,7 @@
+const i18n = window.RoamI18n
+const t = (key, vars) => i18n.t(key, vars)
+i18n.apply()
+
 const status = document.getElementById("status")
 const retry = document.getElementById("retry")
 const openTailscale = document.getElementById("open-tailscale")
@@ -19,7 +23,7 @@ function returnTarget() {
 async function checkConnection() {
   if (checking) return false
   checking = true
-  status.textContent = "Controllo connessione…"
+  status.textContent = t("offline.checking")
 
   try {
     const response = await fetch("/healthz", {
@@ -28,11 +32,11 @@ async function checkConnection() {
     })
     if (!response.ok) throw new Error(`HTTP ${response.status}`)
 
-    status.textContent = "Connesso. Torno all’app…"
+    status.textContent = t("offline.connected")
     location.replace(returnTarget())
     return true
   } catch {
-    status.textContent = "Ancora non raggiungibile. Attiva Tailscale e riprova."
+    status.textContent = t("offline.failed")
     return false
   } finally {
     checking = false

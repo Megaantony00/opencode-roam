@@ -10,8 +10,10 @@ approval requests in a Telegram chat.
 OpenCode Roam is an **unofficial community project**, not affiliated with,
 endorsed by, or sponsored by OpenCode, Tailscale, or Telegram.
 
-> The web UI and interactive setup prompts are currently in Italian. English UI
-> localization is on the roadmap.
+> The web UI and Android app are available in **English and Italian**. The
+> language follows the system by default and can be changed in Settings. The
+> interactive setup follows the system language; use `--lang en` or `--lang it`
+> to override it.
 
 ## Why
 
@@ -38,14 +40,17 @@ self-hosted remote control for it:
   while you are at the PC.
 - Optional Android wrapper in `android/` for native **Quote**, text share, and
   encrypted token storage.
+- English and Italian UI, with the system language as the default.
+- Version, update check, and direct APK update in the Android settings.
 - Tests for the bridge, transports, setup config, web routes, SSE, and privacy
   filters.
 
 ## Screenshots
 
 The chat screenshots are generated from a static mock with a synthetic session,
-fake messages, and fake hostnames. The APK setup screenshot is from a real
-device, but the fields are empty and contain no account or token data.
+fake messages, and fake hostnames. The Android screenshots are from a real
+device but use a demo bridge URL and an empty token field; they contain no
+account or token data.
 
 | Mobile | Desktop |
 | --- | --- |
@@ -161,7 +166,8 @@ The `android/` wrapper adds native integration that the web UI cannot provide:
 
 - **Cita** and **Cerca** in the native text-selection menu;
 - first-run URL + web token setup with Android Keystore encryption;
-- settings to change the URL/token later and logout;
+- settings to change the URL/token later, logout, and switch language;
+- version, **Check for updates**, GitHub link, and in-app APK download/install;
 - text share target, file chooser, offline/Tailscale screen, and update check.
 
 It is optional. Build the debug APK with:
@@ -174,7 +180,9 @@ cd android
 See [android/README.md](android/README.md) for SDK requirements, output path,
 signing, and the release checklist.
 
-<img src="docs/screenshots/apk-setup.png" width="280" alt="OpenCode Roam Android setup screen" />
+| Settings | Updates & GitHub |
+| --- | --- |
+| <img src="docs/screenshots/apk-settings-top.png" width="280" alt="OpenCode Roam Android settings screen" /> | <img src="docs/screenshots/apk-settings-app.png" width="280" alt="OpenCode Roam update check and GitHub link" /> |
 
 ## Setup modes
 
@@ -182,9 +190,12 @@ signing, and the release checklist.
 npm run setup           # asks: web-only or web + Telegram
 npm run setup:web       # no Telegram token, no BotFather
 npm run setup:telegram  # web UI + Telegram
+npm run setup -- --lang en
 ```
 
-Telegram can be enabled later by rerunning setup or editing the config.
+The setup prompts follow the system language by default. Use `--lang en` or
+`--lang it` to override it. Telegram can be enabled later by rerunning setup or
+editing the config.
 
 ## Telegram (optional)
 
@@ -307,8 +318,9 @@ See [SECURITY.md](SECURITY.md) for the vulnerability reporting process.
 - **Bridge**: update manually with `git pull`, `npm install`, and a restart.
   Automatic server updates are not enabled by default because the bridge can run
   commands on your PC.
-- **APK** (optional signed prototype): checks GitHub Releases for updates.
-  Android requires user confirmation to install a sideloaded APK; silent
+- **APK** (optional signed prototype): checks GitHub Releases for updates,
+  downloads the APK, and opens the Android installer. Android requires the user
+  to confirm the installation and to allow installs for the app; silent
   installation is not allowed. Releases: https://github.com/Megaantony00/opencode-roam/releases
 
 ## Testing
@@ -378,19 +390,18 @@ Remove it with `uninstall-autostart.ps1`. The startup entry runs
 - Responses arrive at the end of a turn; the web UI does not stream tokens.
 - Single-user design: one bridge, one web token, one paired Telegram user.
 - Windows-first presence/autostart; other hosts may not have idle/lock detection.
-- The web UI and interactive setup prompts are currently Italian; English
-  localization is planned.
 - No hosted service. GitHub Pages cannot run this app; it needs a Node process on
   your PC.
 - The Android APK is an optional signed prototype; it is not distributed through a store yet.
+- The APK updater is not silent: Android always asks for confirmation and may
+  require enabling installs for OpenCode Roam.
 
 ## Roadmap
 
 - Android wrapper in `android/`: native **Quote** action, text share target,
   offline/Tailscale screen, encrypted token, settings to change the bridge
-  URL/token later, logout, and update checker. Signed GitHub releases are
-  available; store distribution is next.
-- English UI localization.
+  URL/token later, logout, language switch, version, update check, and in-app
+  APK update. Signed GitHub releases are available; store distribution is next.
 - Demo screenshots generated with fake data.
 - Optional Docker packaging.
 
@@ -407,7 +418,8 @@ Copyright (C) 2026 OpenCode Roam contributors.
 
 The name and logo are covered separately by [TRADEMARK.md](TRADEMARK.md); the
 source-code license does not grant trademark rights. Third-party licenses are
-listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). The compliance audit
+is in [LICENSING.md](LICENSING.md).
 
 ## Disclaimer
 

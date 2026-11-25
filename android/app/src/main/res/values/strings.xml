@@ -1,4 +1,88 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">OpenCode Roam</string>
+
+    <string name="setup_title">OpenCode Roam</string>
+    <string name="setup_subtitle">Self-hosted remote for OpenCode. Run the bridge on your PC and connect through Tailscale.</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings_subtitle">Connection, language, and app information.</string>
+
+    <string name="section_connection">Connection</string>
+    <string name="section_app">App</string>
+
+    <string name="label_bridge_url">Bridge URL</string>
+    <string name="hint_bridge_url">https://desktop-....ts.net</string>
+    <string name="label_web_token">Web token</string>
+    <string name="hint_web_token_paste">Paste the web token</string>
+    <string name="hint_web_token_keep">Leave blank to keep the current token</string>
+
+    <string name="test_connection">Test connection</string>
+    <string name="testing">Testing…</string>
+    <string name="connection_ok">Connection OK. Save to open the chat.</string>
+    <string name="connection_http">HTTP %1$d. Check the token.</string>
+    <string name="connection_failed">Connection failed: %1$s</string>
+
+    <string name="enter_valid_https">Enter a valid HTTPS URL.</string>
+    <string name="enter_web_token">Enter the web token.</string>
+    <string name="save_open">Save and open</string>
+    <string name="back_to_chat">Back to chat</string>
+    <string name="logout_forget">Logout and forget token</string>
+    <string name="token_note">The token is stored with Android Keystore. It is not the Telegram bot token. The bridge must be reachable over HTTPS; HTTP is allowed only for localhost.</string>
+
+    <string name="token_rejected">The web token was rejected. Check it and save again.</string>
+    <string name="token_url_missing">Token or URL missing. Enter them again.</string>
+    <string name="invalid_bridge_url">Invalid bridge URL.</string>
+    <string name="cookie_failed">Could not set the web cookie.</string>
+    <string name="token_save_failed">Could not save the token securely.</string>
+
+    <string name="settings_open">Settings</string>
+    <string name="reload">Reload</string>
+    <string name="language">Language</string>
+    <string name="language_system">System default</string>
+    <string name="language_italian">Italiano</string>
+    <string name="language_english">English</string>
+    <string name="version_label">Version %1$s</string>
+
+    <string name="check_updates">Check for updates</string>
+    <string name="checking_updates">Checking for updates…</string>
+    <string name="update_up_to_date">You are up to date (version %1$s).</string>
+    <string name="update_check_failed">Could not check for updates. Try again later.</string>
+    <string name="update_available_title">Update available</string>
+    <string name="update_available_message">OpenCode Roam %1$s is available. You are on %2$s.</string>
+    <string name="update_now">Update now</string>
+    <string name="later">Later</string>
+    <string name="open_release_page">Release page</string>
+    <string name="update_apk_missing">This release has no APK. Open the release page to download it.</string>
+
+    <string name="downloading_update">Downloading OpenCode Roam %1$s…</string>
+    <string name="download_progress">%1$d%%</string>
+    <string name="download_failed">Download failed. Open the release page instead.</string>
+    <string name="download_cancelled">Download cancelled.</string>
+    <string name="update_ready_title">Ready to install</string>
+    <string name="update_ready_message">Android will ask you to confirm the installation. The app keeps your token.</string>
+    <string name="install">Install</string>
+    <string name="cancel">Cancel</string>
+
+    <string name="install_permission_title">Allow installs</string>
+    <string name="install_permission_message">Android needs permission to install updates for OpenCode Roam. Enable “Allow from this source”, then try again.</string>
+    <string name="open_settings">Open settings</string>
+    <string name="install_failed">The installer could not start.</string>
+    <string name="install_result_failed">Installation failed.</string>
+
+    <string name="github_repository">GitHub repository</string>
+    <string name="github_open">Open the GitHub repository</string>
+
+    <string name="offline_title">Connection unavailable</string>
+    <string name="offline_message">Tailscale may be off, or the PC/bot may be unreachable.</string>
+    <string name="open_tailscale">Open Tailscale</string>
+    <string name="retry">Retry</string>
+    <string name="settings">Settings</string>
+
+    <string name="no_file_picker">No file picker available.</string>
+    <string name="no_app_open_link">No app can open this link.</string>
+
+    <string name="menu_quote">Quote</string>
+    <string name="menu_copy">Copy</string>
+    <string name="menu_search">Search</string>
+    <string name="menu_select_all">Select all</string>
 </resources>

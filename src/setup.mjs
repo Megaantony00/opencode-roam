@@ -6,10 +6,12 @@ import { stdin, stdout } from "node:process"
 import { CONFIG_PATH, loadConfig, saveConfig } from "./config.mjs"
 import { OpenCodeApi } from "./opencode.mjs"
 import { generatePairCode, isPairCommand, safeEqual } from "./pairing.mjs"
+import { createTranslator, isYes, resolveSetupLanguage } from "./setup-i18n.mjs"
 import { TelegramApi } from "./telegram.mjs"
 import { errorMessage, formatTime, isPrivateChat, oneLine } from "./util.mjs"
 
 let rl = null
+let t = createTranslator("en")
 
 function getRl() {
   if (!rl) {
@@ -92,9 +94,7 @@ async function pair(api, config, code) {
       updates = await api.getUpdates(offset, 50)
     } catch (error) {
       if (error?.status === 409) {
-        console.error(
-          "\nIl bot è già in esecuzione. Fermalo (Ctrl+C nella sua finestra) e rilancia npm run setup.",
-        )
+        console.error(`\n${t("botRunning")}`)
         return false
       }
       throw error
@@ -108,7 +108,7 @@ async function pair(api, config, code) {
       const text = message.text.trim()
       if (/^\/start(?:@\w+)?$/i.test(text)) {
         await api
-          .sendMessage(message.chat.id, "Ciao. Inviami /pair <codice> (il codice è sul PC).")
+          .sendMessage(message.chat.id, t("startPair"))
           .catch(() => {})
         continue
       }
@@ -117,7 +117,7 @@ async function pair(api, config, code) {
       if (candidate === null) continue
 
       if (!safeEqual(candidate, code)) {
-        await api.sendMessage(message.chat.id, "Codice errato.").catch(() => {})
+        await api.sendMessage(message.chat.id, t("wrongCode")).catch(() => {})
         continue
       }
 
@@ -131,7 +131,7 @@ async function pair(api, config, code) {
       config.pairCodeExpires = 0
       config.telegramOffset = offset
       await saveConfig(config)
-      await api.sendMessage(message.chat.id, `✅ Collegamento riuscito, ${name}.`).catch(() => {})
+      await api.sendMessage(message.chat.id, t("pairSuccess", { name })).catch(() => {})
       return true
     }
 
@@ -149,7 +149,7 @@ async function chooseSession(config) {
   try {
     api = await OpenCodeApi.connect({ startIfMissing: false })
   } catch {
-    console.log("\nServizio OpenCode non attivo: la sessione verrà scelta al primo avvio.")
+    console.log(`\n${t("chooseSessionError")}`)
     if (!config.location) config.location = process.cwd()
     return
   }
@@ -159,27 +159,27 @@ async function chooseSession(config) {
     const result = await api.listSessions(8)
     list = Array.isArray(result?.data) ? result.data : []
   } catch (error) {
-    console.log(`\nNon riesco a leggere le sessioni: ${errorMessage(error)}`)
+    console.log(`\n${t("cannotReadSessions", { error: errorMessage(error) })}`)
   }
 
   list.sort((left, right) => (right.time?.updated ?? 0) - (left.time?.updated ?? 0))
 
   if (!list.length) {
-    console.log("\nNessuna sessione recente: verrà scelta al primo avvio.")
+    console.log(`\n${t("noRecentSessions")}`)
     if (!config.location) config.location = process.cwd()
     return
   }
 
-  console.log("\nSessioni recenti:")
+  console.log(`\n${t("recentSessions")}`)
   list.forEach((session, index) => {
     console.log(
-      `${index + 1}. ${oneLine(session.title || "(senza titolo)", 64)}\n   ${session.id} · ${formatTime(session.time?.updated)} · ${session.location?.directory ?? "?"}`,
+      `${index + 1}. ${oneLine(session.title || t("untitled"), 64)}\n   ${session.id} · ${formatTime(session.time?.updated)} · ${session.location?.directory ?? "?"}`,
     )
   })
 
   const savedIndex = list.findIndex((session) => session.id === config.sessionID)
   const defaultIndex = savedIndex >= 0 ? String(savedIndex + 1) : "1"
-  const answer = await ask(`Scegli la sessione predefinita (1-${list.length})`, defaultIndex)
+  const answer = await ask(t("chooseSession", { count: list.length }), defaultIndex)
   const index = Number(answer)
   const chosen =
     Number.isInteger(index) && index >= 1 && index <= list.length ? list[index - 1] : list[0]
@@ -212,7 +212,7 @@ async function enableWeb(config, { askUrl = true } = {}) {
 
   if (askUrl) {
     const publicUrl = await ask(
-      "\nURL of the web UI over Tailscale (optional, e.g. https://<host>.<tailnet>.ts.net)",
+      `\n${t("webUrl")}`,
       config.web.publicUrl || "",
     )
     config.web.publicUrl = /^https?:\/\//i.test(publicUrl) ? publicUrl.trim() : ""
@@ -220,28 +220,40 @@ async function enableWeb(config, { askUrl = true } = {}) {
 }
 
 function printSummary(config) {
-  console.log("\nConfiguration saved.")
-  console.log(`File: ${CONFIG_PATH}`)
-  console.log(`Session: ${config.sessionID || "(chosen on first start)"}`)
-  console.log(`Directory: ${config.location}`)
+  console.log(`\n${t("configSaved")}`)
+  console.log(t("configFile", { path: CONFIG_PATH }))
+  console.log(t("configSession", { session: config.sessionID || t("chosenOnFirstStart") }))
+  console.log(t("configDirectory", { path: config.location }))
   console.log(
-    `Telegram: ${config.telegramEnabled ? (config.telegramMode === "notify" ? "notify only" : "full chat") : "disabled"}`,
+    t("configTelegram", {
+      value: config.telegramEnabled
+        ? config.telegramMode === "notify"
+          ? t("telegramNotify")
+          : t("telegramFull")
+        : t("telegramDisabled"),
+    }),
   )
-  console.log(`Redaction: ${config.redact ? "on" : "off"}`)
+  console.log(t("configRedaction", { value: config.redact ? t("on") : t("off") }))
   console.log(
-    `Web: ${config.web.enabled ? `http://127.0.0.1:${config.web.port}` : "disabled"}`,
+    t("configWeb", {
+      value: config.web.enabled
+        ? `http://127.0.0.1:${config.web.port}`
+        : t("webDisabled"),
+    }),
   )
 
   if (config.web.enabled) {
     console.log(
-      `\nWeb link (contains a secret, do not share):\nhttp://127.0.0.1:${config.web.port}/?token=${config.web.token}`,
+      `\n${t("webLink", {
+        url: `http://127.0.0.1:${config.web.port}/?token=${config.web.token}`,
+      })}`,
     )
-    console.log(`Tailscale Serve: tailscale serve --bg http://127.0.0.1:${config.web.port}`)
-    if (config.web.publicUrl) console.log(`Tailscale URL: ${config.web.publicUrl}`)
+    console.log(t("tailscaleServe", { port: config.web.port }))
+    if (config.web.publicUrl) console.log(t("tailscaleUrl", { url: config.web.publicUrl }))
   }
 
-  console.log("\nStart with: npm start")
-  console.log("Keep the PC awake while you need remote access.")
+  console.log(`\n${t("start")}`)
+  console.log(t("keepAwake"))
 }
 
 async function finishWebOnly(config) {
@@ -254,29 +266,21 @@ async function finishWebOnly(config) {
 
 async function main() {
   const args = process.argv.slice(2)
+  t = createTranslator(resolveSetupLanguage(args))
 
   if (args.includes("--help") || args.includes("-h")) {
-    console.log(`Usage: npm run setup [-- --web-only|--telegram] [--reset] [--token-file <file>] [--no-pair] [--token-hidden]
-
-  --web-only      configure only the web UI/PWA (no Telegram bot)
-  --telegram      configure the web UI/PWA and Telegram
-  --reset         remove Telegram users already paired
-  --token-file    read the Telegram bot token from a file
-  --no-pair       save token and session without pairing
-  --token-hidden  ask for the Telegram token without showing it (default: visible)
-
-Without --web-only or --telegram, the setup asks which mode to use.`)
+    console.log(t("setupHelp"))
     return
   }
 
-  console.log("OpenCode Roam — configuration")
-  console.log("Telegram is optional. The web UI is the primary transport.\n")
+  console.log(t("headerTitle"))
+  console.log(`${t("headerLead")}\n`)
 
   const config = await loadConfig()
 
   if (args.includes("--reset")) {
     config.allowedUsers = []
-    console.log("Telegram users removed.")
+    console.log(t("resetDone"))
   }
 
   let useTelegram = !args.includes("--web-only")
@@ -284,7 +288,7 @@ Without --web-only or --telegram, the setup asks which mode to use.`)
     useTelegram = false
   } else if (!args.includes("--telegram")) {
     const mode = await ask(
-      "Install mode: (1) Web/PWA only, (2) Web/PWA + Telegram",
+      t("modePrompt"),
       config.telegramEnabled ? "2" : "1",
     )
     useTelegram = /^2/.test(mode)
@@ -302,34 +306,32 @@ Without --web-only or --telegram, the setup asks which mode to use.`)
   let token = tokenPath ? await readTokenFile(tokenPath) : ""
 
   if (!token && config.token) {
-    const keep = await ask("C'è già un token salvato. Vuoi sostituirlo? (s/n)", "n")
-    if (/^s/i.test(keep)) token = ""
+    const keep = await ask(t("keepToken"), "n")
+    if (isYes(keep)) token = ""
     else token = config.token
   }
 
   if (!token) {
     token = args.includes("--token-hidden")
-      ? await askHidden("Token del bot (input nascosto): ")
-      : await ask("Token del bot (visibile, incolla con Ctrl+V e premi Invio)")
+      ? await askHidden(t("tokenHidden"))
+      : await ask(t("tokenVisible"))
   }
 
   token = token.trim().replace(/^["']|["']$/g, "").replace(/\s+/g, "")
 
   while (token && !/^\d+:.+$/.test(token)) {
-    console.error(
-      "Formato non riconosciuto: deve iniziare con i numeri del bot, poi ':', poi la parte dopo i due punti.",
-    )
-    console.error("Copia il token direttamente dal messaggio di BotFather, senza virgolette o spazi.")
-    const retry = await ask("Incolla il token di nuovo (Invio per uscire)")
+    console.error(t("tokenFormat"))
+    console.error(t("tokenFormatHint"))
+    const retry = await ask(t("tokenRetry"))
     token = retry.trim().replace(/^["']|["']$/g, "").replace(/\s+/g, "")
   }
 
   if (!token) {
-    console.error("Token mancante.")
+    console.error(t("tokenMissing"))
     return
   }
 
-  console.log(`Token letto: ${token.length} caratteri.`)
+  console.log(t("tokenRead", { count: token.length }))
 
   let api = new TelegramApi(token)
   let me = null
@@ -338,44 +340,47 @@ Without --web-only or --telegram, the setup asks which mode to use.`)
       me = await api.getMe()
     } catch (error) {
       if (error?.status === 0) {
-        console.error("Telegram non è raggiungibile: controlla la connessione internet e rilancia npm run setup.")
+        console.error(t("telegramUnreachable"))
         return
       }
-      console.error(`Telegram ha rifiutato il token (tentativo ${attempt}/3): ${errorMessage(error)}`)
+      console.error(t("telegramRejected", { attempt, error: errorMessage(error) }))
       if (attempt < 3) {
-        const retry = await ask("Incolla di nuovo il token (Invio per uscire)")
+        const retry = await ask(t("tokenRetry"))
         const cleaned = retry.trim().replace(/^["']|["']$/g, "").replace(/\s+/g, "")
         if (!cleaned) break
         if (!/^\d+:.+$/.test(cleaned)) {
-          console.error("Formato non riconosciuto: serve la forma 123456789:ABC...")
+          console.error(t("tokenFormat"))
           break
         }
         token = cleaned
         api = new TelegramApi(token)
-        console.log(`Token letto: ${token.length} caratteri.`)
+        console.log(t("tokenRead", { count: token.length }))
       }
     }
   }
 
   if (!me) {
-    console.error("Token non accettato. Copialo di nuovo da BotFather e rilancia npm run setup.")
+    console.error(t("tokenRejected"))
     return
   }
 
   config.token = token
   config.botUsername = me.username ?? ""
   await saveConfig(config)
-  console.log(`\nBot: @${me.username ?? me.id}`)
+  console.log(`\n${t("botLabel", { username: me.username ?? me.id })}`)
 
   const shouldPair = !args.includes("--no-pair")
   if (shouldPair) {
     if (config.allowedUsers.length > 0) {
       const replace = await ask(
-        `Già collegato a ${config.allowedUsers[0].name} (${config.allowedUsers[0].id}). Ricollegare? (s/n)`,
+        t("alreadyPaired", {
+          name: config.allowedUsers[0].name,
+          id: config.allowedUsers[0].id,
+        }),
         "n",
       )
-      if (!/^s/i.test(replace)) {
-        console.log("Pairing saltato.")
+      if (!isYes(replace)) {
+        console.log(t("pairingSkipped"))
         await finish(config)
         return
       }
@@ -388,20 +393,20 @@ Without --web-only or --telegram, the setup asks which mode to use.`)
     config.allowedUsers = []
     await saveConfig(config)
 
-    console.log(`\nCodice di pairing: ${code}  (valido 10 minuti)`)
-    console.log(`Apri Telegram, cerca @${me.username ?? me.id}, premi START e invia:`)
+    console.log(`\n${t("pairCode", { code })}`)
+    console.log(t("pairOpen", { username: me.username ?? me.id }))
     console.log(`  /pair ${code}`)
-    console.log("\nNon c'è nessun pulsante: incolla /pair <codice> nel campo messaggio e premi Invio.")
-    console.log("In attesa… (assicurati che il bot non sia già in esecuzione)")
+    console.log(`\n${t("pairNoButton")}`)
+    console.log(t("pairWaiting"))
 
     const paired = await pair(api, config, code)
     if (!paired) {
       config.allowedUsers = args.includes("--reset") ? [] : previousUsers
       await saveConfig(config).catch(() => {})
-      console.log("Pairing non completato. Rilancia npm run setup quando vuoi.")
+      console.log(t("pairNotCompleted"))
       return
     }
-    console.log("Telegram collegato.")
+    console.log(t("telegramConnected"))
   }
 
   await finish(config)
@@ -412,13 +417,13 @@ async function finish(config) {
   await chooseSession(config)
 
   const mode = await ask(
-    "\nTelegram mode: (c) full chat, (n) finish notifications only",
+    `\n${t("telegramMode")}`,
     config.telegramMode === "notify" ? "n" : "c",
   )
   config.telegramMode = /^n/i.test(mode) ? "notify" : "full"
 
-  const web = await ask("\nEnable the web UI/PWA? (y/n)", "y")
-  if (/^y/i.test(web)) {
+  const web = await ask(`\n${t("webEnable")}`, "y")
+  if (isYes(web)) {
     await enableWeb(config)
   } else {
     config.web = { ...config.web, enabled: false }

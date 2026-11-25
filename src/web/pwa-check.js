@@ -1,3 +1,7 @@
+const i18n = window.RoamI18n
+const t = (key, vars) => i18n.t(key, vars)
+i18n.apply()
+
 const out = document.getElementById("out")
 const lines = []
 
@@ -18,14 +22,14 @@ function decodeIcon(src) {
 
 log("secureContext", window.isSecureContext)
 log("url", location.href)
-log("manifestLink", document.querySelector('link[rel="manifest"]')?.href || "assente")
+log("manifestLink", document.querySelector('link[rel="manifest"]')?.href || t("pwa.absent"))
 log("serviceWorkerSupport", "serviceWorker" in navigator)
 log("standalone", window.matchMedia("(display-mode: standalone)").matches)
 
 let installable = false
 window.addEventListener("beforeinstallprompt", () => {
   installable = true
-  log("beforeinstallprompt", "sì")
+  log("beforeinstallprompt", t("pwa.yes"))
 })
 
 if ("serviceWorker" in navigator) {
@@ -39,7 +43,7 @@ if ("serviceWorker" in navigator) {
 
       if ("caches" in window) {
         const keys = await caches.keys()
-        log("caches", keys.join(", ") || "nessuna")
+        log("caches", keys.join(", ") || t("pwa.none"))
         const key = keys.find((name) => name.startsWith("ocb-shell-"))
         if (key) {
           const cache = await caches.open(key)
@@ -50,7 +54,7 @@ if ("serviceWorker" in navigator) {
     .catch((error) => log("swError", error.message))
 }
 
-fetch("/manifest.webmanifest?v=1", { cache: "no-store" })
+fetch("/manifest.webmanifest?v=2", { cache: "no-store" })
   .then(async (response) => {
     log("manifestFetch", `${response.status} ${response.headers.get("content-type") || ""}`)
     if (!response.ok) return
@@ -66,19 +70,19 @@ fetch("/manifest.webmanifest?v=1", { cache: "no-store" })
         const result = await fetch(icon.src, { cache: "no-store" })
         const decoded = await decodeIcon(icon.src)
         const image = decoded.ok
-          ? `decodificata ${decoded.width}x${decoded.height}`
-          : "DECODIFICA FALLITA"
+          ? t("pwa.decoded", { width: decoded.width, height: decoded.height })
+          : t("pwa.decodeFailed")
         log(
           `icon ${icon.sizes}`,
           `${result.status} ${result.headers.get("content-type") || ""} · ${image}`,
         )
       } catch (error) {
-        log(`icon ${icon.sizes}`, `errore ${error.message}`)
+        log(`icon ${icon.sizes}`, t("pwa.error", { message: error.message }))
       }
     }
   })
   .catch((error) => log("manifestError", error.message))
 
 setTimeout(() => {
-  if (!installable) log("beforeinstallprompt", "non ricevuto")
+  if (!installable) log("beforeinstallprompt", t("pwa.notReceived"))
 }, 3000)

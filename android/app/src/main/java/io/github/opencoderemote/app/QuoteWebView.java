@@ -18,13 +18,13 @@ import java.net.URLEncoder;
 
 /**
  * WebView with native selection actions:
- * - Cita: inserts the selected text into the composer;
- * - Copia: copies the selected text;
- * - Cerca: opens the default browser with a web search;
- * - Seleziona tutto is moved to the overflow menu.
+ * - Quote: inserts the selected text into the composer;
+ * - Copy: copies the selected text;
+ * - Search: opens the default browser with a web search;
+ * - Select all is moved to the overflow menu.
  *
  * Android/WebView controls the order of the system menu items, so the visible
- * positions of Copia and Cerca are swapped by relabeling the delegate copy item
+ * positions of Copy and Search are swapped by relabeling the delegate copy item
  * and providing our own copy item in the first slot.
  */
 public class QuoteWebView extends WebView {
@@ -54,6 +54,10 @@ public class QuoteWebView extends WebView {
             this.view = view;
         }
 
+        private String string(int id) {
+            return view.getContext().getString(id);
+        }
+
         @Override
         public boolean onCreateActionMode(ActionMode mode, Menu menu) {
             if (!delegate.onCreateActionMode(mode, menu)) return false;
@@ -61,10 +65,10 @@ public class QuoteWebView extends WebView {
             moveSelectAllToOverflow(menu);
             renameDelegateCopyToSearch(menu);
 
-            MenuItem quote = menu.add(Menu.NONE, QUOTE_MENU_ID, Menu.NONE, "Cita");
+            MenuItem quote = menu.add(Menu.NONE, QUOTE_MENU_ID, Menu.NONE, string(R.string.menu_quote));
             quote.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
 
-            MenuItem copy = menu.add(Menu.NONE, COPY_MENU_ID, 1, "Copia");
+            MenuItem copy = menu.add(Menu.NONE, COPY_MENU_ID, 1, string(R.string.menu_copy));
             copy.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
             return true;
         }
@@ -102,7 +106,9 @@ public class QuoteWebView extends WebView {
                 return true;
             }
 
-            if ("Cerca".equalsIgnoreCase(title)) {
+            if (string(R.string.menu_search).equalsIgnoreCase(title)
+                    || "Cerca".equalsIgnoreCase(title)
+                    || "Search".equalsIgnoreCase(title)) {
                 searchSelection();
                 mode.finish();
                 return true;
@@ -116,7 +122,7 @@ public class QuoteWebView extends WebView {
             delegate.onDestroyActionMode(mode);
         }
 
-        private static void renameDelegateCopyToSearch(Menu menu) {
+        private void renameDelegateCopyToSearch(Menu menu) {
             for (int index = 0; index < menu.size(); index += 1) {
                 MenuItem item = menu.getItem(index);
                 if (item.getItemId() == COPY_MENU_ID || item.getItemId() == QUOTE_MENU_ID) {
@@ -126,12 +132,12 @@ public class QuoteWebView extends WebView {
                 if (item.getItemId() == android.R.id.copy
                         || "Copia".equalsIgnoreCase(title)
                         || "Copy".equalsIgnoreCase(title)) {
-                    item.setTitle("Cerca");
+                    item.setTitle(string(R.string.menu_search));
                 }
             }
         }
 
-        private static void moveSelectAllToOverflow(Menu menu) {
+        private void moveSelectAllToOverflow(Menu menu) {
             for (int index = 0; index < menu.size(); index += 1) {
                 MenuItem item = menu.getItem(index);
                 String title = String.valueOf(item.getTitle());

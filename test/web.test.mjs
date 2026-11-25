@@ -79,7 +79,7 @@ class MockBridge extends EventEmitter {
   }
 }
 
-async function startWeb(t) {
+async function startWeb(t, options = {}) {
   const bridge = new MockBridge()
   const config = {
     sessionID: "ses_test",
@@ -91,6 +91,7 @@ async function startWeb(t) {
     config,
     saveConfig: async () => {},
     logger: { log() {}, warn() {}, error() {} },
+    fetchImpl: options.fetchImpl,
   })
   await web.start()
   t.after(() => web.stop())
@@ -122,6 +123,9 @@ test("la pagina offline è pubblica e apre Tailscale", async (t) => {
   assert.doesNotMatch(html, /intent:\/\//)
   assert.match(html, /com\.tailscale\.ipn/)
   assert.match(html, /\/offline\.js/)
+  assert.match(html, /\/i18n\.js/)
+  assert.doesNotMatch(html, /\/offline\.js\?/)
+  assert.doesNotMatch(html, /\/i18n\.js\?/)
 
   const sw = await (await fetch(`${base}/sw.js`)).text()
   assert.match(sw, /offline\.html/)
@@ -155,7 +159,7 @@ test("il token imposta il cookie e apre la UI", async (t) => {
 
   const page = await fetch(`${base}/`, { headers: { cookie } })
   assert.equal(page.status, 200)
-  assert.match(await page.text(), /Apri la chat/)
+  assert.match(await page.text(), /landing\.openChat/)
 
   const chat = await fetch(`${base}/chat`, { headers: { cookie } })
   assert.equal(chat.status, 200)
@@ -349,4 +353,60 @@ test("SSE invia init con lo stato", async (t) => {
   assert.match(text, /"type":"init"/)
   assert.match(text, /"id":"ses_test"/)
   await reader.cancel()
+})
+
+test("lo stato espone versione e repository", async (t) => {
+  const { base } = await startWeb(t)
+  const login = await fetch(`${base}/?token=${TOKEN}`, { redirect: "manual" })
+  const cookie = login.headers.get("set-cookie").split(";")[0]
+
+  const response = await fetch(`${base}/api/state`, { headers: { cookie } })
+  assert.equal(response.status, 200)
+  const data = await response.json()
+  assert.equal(data.version, "0.1.2")
+  assert.equal(data.repo, "Megaantony00/opencode-roam")
+  assert.equal(data.repoUrl, "https://github.com/Megaantony00/opencode-roam")
+})
+
+test("GET /api/update confronta la release GitHub", async (t) => {
+  const calls = []
+  const fetchImpl = async (url) => {
+    calls.push(String(url))
+    return new Response(
+      JSON.stringify({
+        tag_name: "v9.9.9",
+        html_url: "https://github.com/Megaantony00/opencode-roam/releases/tag/v9.9.9",
+      }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    )
+  }
+  const { base } = await startWeb(t, { fetchImpl })
+  const login = await fetch(`${base}/?token=${TOKEN}`, { redirect: "manual" })
+  const cookie = login.headers.get("set-cookie").split(";")[0]
+
+  const response = await fetch(`${base}/api/update`, { headers: { cookie } })
+  assert.equal(response.status, 200)
+  const data = await response.json()
+  assert.equal(data.current, "0.1.2")
+  assert.equal(data.latest, "9.9.9")
+  assert.equal(data.newer, true)
+  assert.match(data.url, /releases\/tag\/v9\.9\.9$/)
+  assert.equal(calls.length, 1)
+  assert.match(calls[0], /api\.github\.com\/repos\/Megaantony00\/opencode-roam\/releases\/latest/)
+})
+
+test("la UI web carica il modulo i18n", async (t) => {
+  const { base } = await startWeb(t)
+  const login = await fetch(`${base}/?token=${TOKEN}`, { redirect: "manual" })
+  const cookie = login.headers.get("set-cookie").split(";")[0]
+
+  const page = await fetch(`${base}/chat`, { headers: { cookie } })
+  const html = await page.text()
+  assert.match(html, /id="settings-dialog"/)
+  assert.match(html, /\/i18n\.js/)
+  assert.match(html, /id="check-updates"/)
+
+  const script = await fetch(`${base}/i18n.js`, { headers: { cookie } })
+  assert.equal(script.status, 200)
+  assert.match(await script.text(), /window\.RoamI18n/)
 })

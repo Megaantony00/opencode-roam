@@ -6,10 +6,17 @@ import { fileURLToPath } from "node:url"
 
 import { safeEqual } from "../pairing.mjs"
 import { redactText } from "../redact.mjs"
+import { fetchLatestRelease, isNewer, repoFromPackage } from "../update.mjs"
 import { errorMessage } from "../util.mjs"
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const PUBLIC_DIR = join(HERE, "..", "web")
+const PACKAGE = JSON.parse(
+  await readFile(join(HERE, "..", "..", "package.json"), "utf8"),
+)
+const PACKAGE_VERSION = PACKAGE.version || "0.0.0"
+const GITHUB_REPO = process.env.OPENCODE_ROAM_REPO || repoFromPackage(PACKAGE)
+const REPO_URL = GITHUB_REPO ? `https://github.com/${GITHUB_REPO}` : ""
 
 const ASSETS = {
   "/": ["landing.html", "text/html; charset=utf-8"],
@@ -31,6 +38,7 @@ const ASSETS = {
   "/chat": ["index.html", "text/html; charset=utf-8"],
   "/index.html": ["index.html", "text/html; charset=utf-8"],
   "/app.js": ["app.js", "text/javascript; charset=utf-8"],
+  "/i18n.js": ["i18n.js", "text/javascript; charset=utf-8"],
   "/style.css": ["style.css", "text/css; charset=utf-8"],
   "/sw.js": ["sw.js", "text/javascript; charset=utf-8"],
 }
@@ -52,6 +60,7 @@ const PUBLIC_ASSETS = new Set([
   "/apple-touch-icon.png",
   "/favicon-32.png",
   "/manifest.webmanifest",
+  "/i18n.js",
   "/sw.js",
 ])
 
@@ -59,9 +68,21 @@ const CSP =
   "default-src 'self'; img-src 'self' data: blob:; style-src 'self'; script-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
 
 const DECISION_LABEL = {
-  once: "✅ Approvato una volta",
-  always: "♾️ Approvato sempre",
-  reject: "❌ Negato",
+  once: "✅ Approved once",
+  always: "♾️ Approved always",
+  reject: "❌ Denied",
+}
+
+function languageFrom(request) {
+  const header = String(request.headers["accept-language"] ?? "").toLowerCase()
+  return header.includes("it") ? "it" : "en"
+}
+
+function httpError(status, code, message) {
+  const error = new Error(message)
+  error.status = status
+  error.code = code
+  return error
 }
 
 function parseCookies(header) {
@@ -84,7 +105,7 @@ function readJson(request, limit = 256 * 1024) {
     request.on("data", (chunk) => {
       size += chunk.length
       if (size > limit) {
-        reject(new Error("Richiesta troppo grande"))
+        reject(httpError(413, "too_large", "Request too large"))
         request.destroy()
         return
       }
@@ -94,11 +115,15 @@ function readJson(request, limit = 256 * 1024) {
       try {
         resolve(chunks.length ? JSON.parse(Buffer.concat(chunks).toString("utf8")) : {})
       } catch {
-        reject(new Error("JSON non valido"))
+        reject(httpError(400, "invalid_json", "Invalid JSON"))
       }
     })
     request.on("error", reject)
   })
+}
+
+function sendError(response, status, code, message) {
+  sendJson(response, status, { code, error: message })
 }
 
 function sendJson(response, status, value) {
@@ -125,17 +150,19 @@ function sendText(response, status, text) {
  * in locale resta su 127.0.0.1 e non espone nulla su internet.
  */
 export class WebTransport {
-  constructor({ bridge, config, saveConfig, logger = console }) {
+  constructor({ bridge, config, saveConfig, logger = console, fetchImpl = globalThis.fetch }) {
     this.bridge = bridge
     this.config = config
     this.save = saveConfig
     this.log = logger
+    this.fetchImpl = fetchImpl
 
     this.server = null
     this.clients = new Set()
     this.entries = []
     this.seq = 0
     this.startedAt = Date.now()
+    this.updateCache = null
 
     this.permissions = new Map()
     this.permissionEntries = new Map()
@@ -172,8 +199,14 @@ export class WebTransport {
     this.server = createServer((request, response) => {
       this.handle(request, response).catch((error) => {
         this.log.warn(`[web] ${errorMessage(error)}`)
-        if (!response.headersSent) sendJson(response, 500, { error: "Errore interno" })
-        else response.end()
+        if (!response.headersSent) {
+          sendError(
+            response,
+            Number(error?.status) || 500,
+            error?.code || "internal",
+            error?.code ? error.message : "Internal error",
+          )
+        } else response.end()
       })
     })
 
@@ -255,23 +288,40 @@ export class WebTransport {
     return value
   }
 
+  redactValue(value) {
+    const text = String(value ?? "")
+    if (this.config.redact === false) return text
+    return redactText(text, { maxChars: 5000 })
+  }
+
   addPermission(request) {
     const key = String(++this.seq)
     this.permissions.set(key, request)
 
-    const resources = (request.resources ?? []).slice(0, 4).map((item) => String(item).slice(0, 300))
-    const lines = [
-      `Sessione: ${this.bridge.sessionTitle(request.sessionID)}`,
-      `Azione: ${request.action}`,
-    ]
-    if (resources.length) lines.push(`Risorsa: ${resources.join(", ")}`)
-    if (request.message) lines.push(`Motivo: ${String(request.message).slice(0, 600)}`)
+    const sessionTitle = this.redactValue(
+      this.bridge.sessionTitle(request.sessionID),
+    ).slice(0, 200)
+    const action = this.redactValue(request.action).slice(0, 200)
+    const resources = (request.resources ?? [])
+      .slice(0, 4)
+      .map((item) => this.redactValue(item).slice(0, 300))
+    const reason = request.message
+      ? this.redactValue(request.message).slice(0, 600)
+      : ""
+
+    const lines = [`Session: ${sessionTitle}`, `Action: ${action}`]
+    if (resources.length) lines.push(`Resource: ${resources.join(", ")}`)
+    if (reason) lines.push(`Reason: ${reason}`)
 
     const entry = this.push({
       kind: "permission",
       key,
       requestID: request.id,
-      text: this.config.redact === false ? lines.join("\n") : redactText(lines.join("\n"), { maxChars: this.config.maxChars }),
+      sessionTitle,
+      action,
+      resources,
+      reason,
+      text: lines.join("\n"),
       resolved: false,
     })
     this.permissionEntries.set(request.id, entry)
@@ -285,7 +335,8 @@ export class WebTransport {
       if (value.id === request.id) this.permissions.delete(key)
     }
     entry.resolved = true
-    entry.result = DECISION_LABEL[decision] ?? `Risolto (${decision})`
+    entry.resultCode = decision
+    entry.result = DECISION_LABEL[decision] ?? `Resolved (${decision})`
     this.broadcast({ type: "entry", entry })
   }
 
@@ -296,7 +347,7 @@ export class WebTransport {
       kind: "form",
       key,
       form,
-      text: `Form in attesa: ${form.title}`,
+      text: `Form waiting: ${form.title}`,
       resolved: false,
     })
     this.formEntries.set(form.id, entry)
@@ -310,8 +361,19 @@ export class WebTransport {
       if (value.id === form.id) this.forms.delete(key)
     }
     entry.resolved = true
-    entry.result = cancelled ? "❌ Form annullato" : "✅ Form inviato"
+    entry.resultCode = cancelled ? "cancelled" : "sent"
+    entry.result = cancelled ? "❌ Form cancelled" : "✅ Form submitted"
     this.broadcast({ type: "entry", entry })
+  }
+
+  async latestRelease() {
+    const now = Date.now()
+    if (this.updateCache && now - this.updateCache.time < 10 * 60 * 1000) {
+      return this.updateCache.value
+    }
+    const value = await fetchLatestRelease(GITHUB_REPO, { fetchImpl: this.fetchImpl })
+    this.updateCache = { time: now, value }
+    return value
   }
 
   state() {
@@ -319,16 +381,19 @@ export class WebTransport {
     const list = [...this.bridge.sessions.values()]
       .sort((left, right) => (right.time?.updated ?? 0) - (left.time?.updated ?? 0))
       .slice(0, 20)
-      .map((session) => ({ id: session.id, title: session.title || "(senza titolo)" }))
+      .map((session) => ({ id: session.id, title: session.title || "(untitled)" }))
 
     if (active && !list.some((session) => session.id === active.id)) {
-      list.unshift({ id: active.id, title: active.title || "(senza titolo)" })
+      list.unshift({ id: active.id, title: active.title || "(untitled)" })
     }
 
     return {
-      active: active ? { id: active.id, title: active.title || "(senza titolo)" } : null,
+      active: active ? { id: active.id, title: active.title || "(untitled)" } : null,
       busy: this.bridge.isBusy(),
       sessions: list,
+      version: PACKAGE_VERSION,
+      repo: GITHUB_REPO,
+      repoUrl: REPO_URL,
     }
   }
 
@@ -369,7 +434,7 @@ export class WebTransport {
 
     if (request.method === "GET" && (url.pathname === "/" || url.pathname === "/chat") && url.searchParams.has("token")) {
       if (!safeEqual(url.searchParams.get("token") ?? "", this.token)) {
-        sendText(response, 401, "Token non valido")
+        sendText(response, 401, languageFrom(request) === "it" ? "Token non valido" : "Invalid token")
         return
       }
       const sessionParam = url.searchParams.get("session")
@@ -392,7 +457,9 @@ export class WebTransport {
       sendText(
         response,
         401,
-        "Accesso negato. Apri il link completo con ?token=... (il token è nella configurazione del bot).",
+        languageFrom(request) === "it"
+          ? "Accesso negato. Apri il link completo con ?token=... (il token è nella configurazione del bridge)."
+          : "Access denied. Open the full link with ?token=... (the token is in the bridge configuration).",
       )
       return
     }
@@ -412,10 +479,30 @@ export class WebTransport {
       return
     }
 
+    if (request.method === "GET" && url.pathname === "/api/update") {
+      if (!GITHUB_REPO) {
+        sendError(response, 503, "update_check_failed", "Update repository not configured")
+        return
+      }
+      try {
+        const release = await this.latestRelease()
+        sendJson(response, 200, {
+          current: PACKAGE_VERSION,
+          latest: release.tag,
+          newer: isNewer(release.tag, PACKAGE_VERSION),
+          url: release.url,
+        })
+      } catch (error) {
+        this.log.warn(`[web] update check: ${errorMessage(error)}`)
+        sendError(response, 502, "update_check_failed", "Could not check for updates")
+      }
+      return
+    }
+
     if (request.method === "GET" && url.pathname === "/api/history") {
       const sessionID = url.searchParams.get("session") || ""
       if (!sessionID) {
-        sendJson(response, 400, { error: "Sessione mancante" })
+        sendError(response, 400, "missing_session", "Session missing")
         return
       }
       try {
@@ -475,14 +562,14 @@ export class WebTransport {
           void this.bridge.markViewed(sessionID).catch(() => {})
         }
       } catch (error) {
-        sendJson(response, 500, { error: errorMessage(error) })
+        sendError(response, 500, "history_failed", errorMessage(error))
       }
       return
     }
 
     if (request.method === "POST") {
       if (!String(request.headers["content-type"] ?? "").includes("application/json")) {
-        sendJson(response, 415, { error: "Content-Type application/json richiesto" })
+        sendError(response, 415, "content_type_required", "application/json content type required")
         return
       }
 
@@ -490,7 +577,7 @@ export class WebTransport {
         const body = await readJson(request, 4096)
         const sessionID = String(body.session ?? "")
         if (!sessionID) {
-          sendJson(response, 400, { error: "Sessione mancante" })
+          sendError(response, 400, "missing_session", "Session missing")
           return
         }
         if (typeof this.bridge.markViewed === "function") {
@@ -504,9 +591,7 @@ export class WebTransport {
         const body = await readJson(request, 30 * 1024 * 1024)
         const sessionID = String(body.session ?? "").trim()
         if (this.bridge.isBusy(sessionID || undefined) && this.config.rejectWhenBusy !== false) {
-          sendJson(response, 409, {
-            error: "OpenCode sta lavorando: attendi la fine del turno.",
-          })
+          sendError(response, 409, "busy", "OpenCode is working: wait for the turn to finish.")
           return
         }
 
@@ -514,25 +599,25 @@ export class WebTransport {
         const files = Array.isArray(body.files) ? body.files.slice(0, 5) : []
 
         if (!text && files.length === 0) {
-          sendJson(response, 400, { error: "Messaggio vuoto" })
+          sendError(response, 400, "empty_message", "Empty message")
           return
         }
         if (text.length > 20_000) {
-          sendJson(response, 400, { error: "Messaggio troppo lungo" })
+          sendError(response, 400, "message_too_long", "Message too long")
           return
         }
 
         for (const file of files) {
           if (!file || typeof file.uri !== "string" || !file.uri.startsWith("data:")) {
-            sendJson(response, 400, { error: "Allegato non valido" })
+            sendError(response, 400, "invalid_attachment", "Invalid attachment")
             return
           }
           if (file.uri.length > 28 * 1024 * 1024) {
-            sendJson(response, 400, { error: "Allegato troppo grande" })
+            sendError(response, 400, "attachment_too_large", "Attachment too large")
             return
           }
           if (file.name && String(file.name).length > 200) {
-            sendJson(response, 400, { error: "Nome allegato troppo lungo" })
+            sendError(response, 400, "attachment_name_too_long", "Attachment name too long")
             return
           }
         }
@@ -562,7 +647,7 @@ export class WebTransport {
           })
           sendJson(response, 200, { ok: true })
         } catch (error) {
-          sendJson(response, 400, { error: errorMessage(error) })
+          sendError(response, 400, "prompt_failed", errorMessage(error))
         }
         return
       }
@@ -572,18 +657,18 @@ export class WebTransport {
         const requestValue = this.permissions.get(String(body.key ?? ""))
         const decision = String(body.decision ?? "")
         if (!requestValue) {
-          sendJson(response, 404, { error: "Richiesta non più valida" })
+          sendError(response, 404, "permission_invalid", "Request is no longer valid")
           return
         }
         if (!["once", "always", "reject"].includes(decision)) {
-          sendJson(response, 400, { error: "Decisione non valida" })
+          sendError(response, 400, "decision_invalid", "Invalid decision")
           return
         }
         try {
           await this.bridge.replyPermission(requestValue, decision)
           sendJson(response, 200, { ok: true })
         } catch (error) {
-          sendJson(response, 400, { error: errorMessage(error) })
+          sendError(response, 400, "permission_failed", errorMessage(error))
         }
         return
       }
@@ -593,18 +678,18 @@ export class WebTransport {
         const form = this.forms.get(String(body.key ?? ""))
         const answer = body.answer
         if (!form) {
-          sendJson(response, 404, { error: "Form non più valido" })
+          sendError(response, 404, "form_invalid", "Form is no longer valid")
           return
         }
         if (!answer || typeof answer !== "object" || Array.isArray(answer)) {
-          sendJson(response, 400, { error: "Risposta non valida" })
+          sendError(response, 400, "answer_invalid", "Invalid answer")
           return
         }
         try {
           await this.bridge.replyForm(form, answer)
           sendJson(response, 200, { ok: true })
         } catch (error) {
-          sendJson(response, 400, { error: errorMessage(error) })
+          sendError(response, 400, "form_failed", errorMessage(error))
         }
         return
       }
@@ -613,20 +698,20 @@ export class WebTransport {
         const body = await readJson(request)
         const id = String(body.id ?? "")
         if (!id) {
-          sendJson(response, 400, { error: "Sessione mancante" })
+          sendError(response, 400, "missing_session", "Session missing")
           return
         }
         try {
           await this.bridge.setActive(id)
           sendJson(response, 200, { ok: true, state: this.state() })
         } catch (error) {
-          sendJson(response, 400, { error: errorMessage(error) })
+          sendError(response, 400, "session_unavailable", errorMessage(error))
         }
         return
       }
     }
 
-    sendJson(response, 404, { error: "Non trovato" })
+    sendError(response, 404, "not_found", "Not found")
   }
 
   serveAsset(response, path) {

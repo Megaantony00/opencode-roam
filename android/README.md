@@ -9,10 +9,11 @@ web page cannot provide:
 - Android Keystore-encrypted token storage;
 - settings to change the URL/token later without reinstalling;
 - logout / forget token;
+- language switch (English/Italian, system default);
+- version, GitHub repository link, and update check;
+- in-app APK download and Android installer;
 - text share target;
-- file chooser for attachments;
-- update check from GitHub Releases (opens the release page; Android still asks
-  before installing a sideloaded APK).
+- file chooser for attachments.
 
 ## Status
 
@@ -55,7 +56,12 @@ android/app/build/outputs/apk/debug/app-debug.apk
 2. Paste the **web token** (not the Telegram bot token).
 3. Tap **Test connection**; it calls `/api/state` with the token.
 4. Save: the token is encrypted with Android Keystore and the chat opens.
-5. Use the gear button to change URL/token later or to log out.
+5. Use the gear button to change URL/token later, switch language, check for
+   updates, open the GitHub repository, or log out.
+
+The language follows the system by default. The choice is stored in the app and
+is also passed to the web UI with `?lang=`. The web UI has its own language
+selector for browser use.
 
 The APK sets an `ocb` cookie in the WebView; the token is never stored in plain
 SharedPreferences.
@@ -83,9 +89,16 @@ The repository is set in `android/app/build.gradle`:
 buildConfigField "String", "GITHUB_REPO", "\"Megaantony00/opencode-roam\""
 ```
 
-The checker reads the latest GitHub release and opens its page. Silent APK
-installation is not allowed by Android; signed releases and checksums are
-provided through GitHub Releases.
+The app checks `releases/latest` on start and from **Settings → Check for
+updates**. If a newer version exists, it downloads the release APK from the
+GitHub asset over HTTPS, verifies that the archive package name matches, and
+opens the Android installer. The app does not install silently: Android asks for
+confirmation and may require enabling **Allow from this source** for OpenCode
+Roam. The signing certificate check performed by Android prevents installing an
+APK signed with a different key.
+
+The release page remains available as a fallback if the APK asset is missing or
+the download fails.
 
 ## Release signing
 
@@ -127,7 +140,7 @@ checksums. It is not part of the source tree.
 
 ## Device test
 
-Tested on Android 15 with the debug APK:
+Tested on Android 15 with the release APK:
 
 - first-run setup screen and connection test;
 - saved token survives an app relaunch (encrypted storage);
@@ -137,10 +150,10 @@ Tested on Android 15 with the debug APK:
 - **Cita** inserts the selected text into the composer;
 - **Cerca** opens the default browser with the selected text;
 - **Copia** uses the Android clipboard;
-- sharing text to OpenCode Roam inserts it as a quote.
-
-Verified end-to-end with v0.1.0 against the v0.1.1 release: the update dialog
-appeared and opened the release page.
+- sharing text to OpenCode Roam inserts it as a quote;
+- language switch between English and Italian;
+- version, GitHub link, and update check;
+- update dialog against a newer GitHub release, APK download, and installer.
 
 ## Limitations
 
@@ -148,3 +161,4 @@ appeared and opened the release page.
 - No background push notifications yet; use the PWA/web UI or Telegram.
 - No image share target yet.
 - Release signing is configured; store distribution is not available yet.
+- The updater cannot install silently; Android always requires confirmation.

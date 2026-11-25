@@ -59,7 +59,7 @@ Do not commit:
 - Run `npm test` before opening the PR.
 - Write commit messages in English.
 - By contributing, you agree that your contribution is licensed under
-  GPL-3.0-or-later.
+  GPL-3.0-or-later. See `LICENSING.md` for the dependency and asset audit.
 
 ## Screenshots and demos
 

@@ -1,3 +1,7 @@
+const i18n = window.RoamI18n
+const t = (key, vars) => i18n.t(key, vars)
+i18n.apply()
+
 const dot = document.getElementById("dot")
 const status = document.getElementById("status")
 const session = document.getElementById("session")
@@ -19,8 +23,10 @@ async function loadState() {
 
     const state = await response.json()
     dot.className = "dot online"
-    status.textContent = state.busy ? "in esecuzione" : "connesso"
-    session.textContent = `Sessione: ${state.active?.title || "nessuna"}`
+    status.textContent = state.busy ? t("status.busy") : t("status.connected")
+    session.textContent = t("landing.session", {
+      title: state.active?.title || t("landing.none"),
+    })
     vpnCard.hidden = true
 
     const button = document.querySelector(".button")
@@ -29,8 +35,8 @@ async function loadState() {
     }
   } catch (error) {
     dot.className = "dot offline"
-    status.textContent = "offline"
-    session.textContent = "Sessione: —"
+    status.textContent = t("status.offline")
+    session.textContent = t("landing.session", { title: "—" })
     const network =
       error?.name === "TimeoutError" ||
       error instanceof TypeError ||
@@ -83,11 +89,13 @@ if ("serviceWorker" in navigator) {
     .register("/sw.js")
     .then(async () => {
       const registration = await navigator.serviceWorker.ready
-      pwaStatus.textContent = registration.active ? "PWA pronta" : "PWA in preparazione"
+      pwaStatus.textContent = registration.active
+        ? t("landing.pwaReady")
+        : t("landing.pwaPreparing")
     })
     .catch(() => {
-      pwaStatus.textContent = "PWA non disponibile"
+      pwaStatus.textContent = t("landing.pwaUnavailable")
     })
 } else {
-  pwaStatus.textContent = "PWA non supportata"
+  pwaStatus.textContent = t("landing.pwaUnsupported")
 }

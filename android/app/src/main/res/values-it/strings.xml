@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">OpenCode Roam</string>
+
+    <string name="setup_title">OpenCode Roam</string>
+    <string name="setup_subtitle">Remoto self-hosted per OpenCode. Avvia il bridge sul PC e connettiti tramite Tailscale.</string>
+    <string name="settings_title">Impostazioni</string>
+    <string name="settings_subtitle">Connessione, lingua e informazioni sull’app.</string>
+
+    <string name="section_connection">Connessione</string>
+    <string name="section_app">App</string>
+
+    <string name="label_bridge_url">URL del bridge</string>
+    <string name="hint_bridge_url">https://desktop-....ts.net</string>
+    <string name="label_web_token">Web token</string>
+    <string name="hint_web_token_paste">Incolla il web token</string>
+    <string name="hint_web_token_keep">Lascia vuoto per mantenere il token attuale</string>
+
+    <string name="test_connection">Prova connessione</string>
+    <string name="testing">Verifica…</string>
+    <string name="connection_ok">Connessione OK. Salva per aprire la chat.</string>
+    <string name="connection_http">HTTP %1$d. Controlla il token.</string>
+    <string name="connection_failed">Connessione fallita: %1$s</string>
+
+    <string name="enter_valid_https">Inserisci un URL HTTPS valido.</string>
+    <string name="enter_web_token">Inserisci il web token.</string>
+    <string name="save_open">Salva e apri</string>
+    <string name="back_to_chat">Torna alla chat</string>
+    <string name="logout_forget">Esci e dimentica il token</string>
+    <string name="token_note">Il token è salvato con Android Keystore. Non è il token del bot Telegram. Il bridge deve essere raggiungibile in HTTPS; HTTP è consentito solo per localhost.</string>
+
+    <string name="token_rejected">Il web token è stato rifiutato. Controllalo e salva di nuovo.</string>
+    <string name="token_url_missing">Token o URL mancanti. Inseriscili di nuovo.</string>
+    <string name="invalid_bridge_url">URL del bridge non valido.</string>
+    <string name="cookie_failed">Impossibile impostare il cookie web.</string>
+    <string name="token_save_failed">Impossibile salvare il token in modo sicuro.</string>
+
+    <string name="settings_open">Impostazioni</string>
+    <string name="reload">Ricarica</string>
+    <string name="language">Lingua</string>
+    <string name="language_system">Lingua di sistema</string>
+    <string name="language_italian">Italiano</string>
+    <string name="language_english">English</string>
+    <string name="version_label">Versione %1$s</string>
+
+    <string name="check_updates">Controlla aggiornamenti</string>
+    <string name="checking_updates">Controllo aggiornamenti…</string>
+    <string name="update_up_to_date">Sei aggiornato (versione %1$s).</string>
+    <string name="update_check_failed">Impossibile controllare gli aggiornamenti. Riprova più tardi.</string>
+    <string name="update_available_title">Aggiornamento disponibile</string>
+    <string name="update_available_message">OpenCode Roam %1$s è disponibile. Hai la versione %2$s.</string>
+    <string name="update_now">Aggiorna ora</string>
+    <string name="later">Dopo</string>
+    <string name="open_release_page">Pagina release</string>
+    <string name="update_apk_missing">Questa release non contiene un APK. Apri la pagina release per scaricarlo.</string>
+
+    <string name="downloading_update">Download di OpenCode Roam %1$s…</string>
+    <string name="download_progress">%1$d%%</string>
+    <string name="download_failed">Download fallito. Apri la pagina release.</string>
+    <string name="download_cancelled">Download annullato.</string>
+    <string name="update_ready_title">Pronto per l’installazione</string>
+    <string name="update_ready_message">Android chiederà conferma dell’installazione. L’app mantiene il token.</string>
+    <string name="install">Installa</string>
+    <string name="cancel">Annulla</string>
+
+    <string name="install_permission_title">Consenti installazioni</string>
+    <string name="install_permission_message">Android richiede il permesso di installare aggiornamenti per OpenCode Roam. Attiva “Consenti da questa origine”, poi riprova.</string>
+    <string name="open_settings">Apri impostazioni</string>
+    <string name="install_failed">Impossibile avviare l’installer.</string>
+    <string name="install_result_failed">Installazione fallita.</string>
+
+    <string name="github_repository">Repository GitHub</string>
+    <string name="github_open">Apri il repository GitHub</string>
+
+    <string name="offline_title">Connessione non disponibile</string>
+    <string name="offline_message">Tailscale potrebbe essere spento, oppure il PC/bot non è raggiungibile.</string>
+    <string name="open_tailscale">Apri Tailscale</string>
+    <string name="retry">Riprova</string>
+    <string name="settings">Impostazioni</string>
+
+    <string name="no_file_picker">Nessun selettore file disponibile.</string>
+    <string name="no_app_open_link">Nessuna app può aprire questo link.</string>
+
+    <string name="menu_quote">Cita</string>
+    <string name="menu_copy">Copia</string>
+    <string name="menu_search">Cerca</string>
+    <string name="menu_select_all">Seleziona tutto</string>
+</resources>

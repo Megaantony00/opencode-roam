@@ -50,8 +50,9 @@ authentication, rate limiting, and access control.
 - `logs/bridge.log` can contain the web URL including the token. Do not share it.
 - The optional Android APK stores the bridge URL and web token with Android
   Keystore / EncryptedSharedPreferences. The Telegram token stays on the PC.
-  Debug builds are not signed for public distribution; a signed release is
-  required before publishing an APK.
+  Release APKs are signed and published with SHA-256 checksums; the updater
+  downloads over HTTPS and Android verifies the package name and signing
+  certificate before installing.
 
 If a token leaks:
 

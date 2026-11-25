@@ -19,5 +19,7 @@ If you fork the code, please use a different name and a different logo. The
 license in `LICENSE` covers the source code; it does not grant trademark rights.
 
 OpenCode, Tailscale, and Telegram are names and trademarks of their respective
-owners. OpenCode Roam is an unofficial community project and is not affiliated
-with, endorsed by, or sponsored by those projects or companies.
+owners. The GitHub mark is a trademark of GitHub, Inc. and is used only to link
+to this project's repository. OpenCode Roam is an unofficial community project
+and is not affiliated with, endorsed by, or sponsored by those projects or
+companies.

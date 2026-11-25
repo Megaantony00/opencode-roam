@@ -1,22 +1,23 @@
 <!doctype html>
-<html lang="it">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#0f1115" />
     <title>PWA check — OpenCode Roam</title>
-    <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png?v=1" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=1" />
-    <link rel="manifest" href="/manifest.webmanifest?v=1" />
-    <script src="/pwa-check.js?v=1" defer></script>
+    <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png?v=2" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=2" />
+    <link rel="manifest" href="/manifest.webmanifest?v=2" />
+    <script src="/i18n.js?v=2" defer></script>
+    <script src="/pwa-check.js?v=2" defer></script>
   </head>
   <body>
-    <h1>PWA check</h1>
-    <p>
-      Diagnostica del browser. Apri questa pagina dal telefono e, se l’installazione
-      non funziona, invia uno screenshot del risultato.
+    <h1 data-i18n="pwa.title">PWA check</h1>
+    <p data-i18n="pwa.lead">
+      Browser diagnostics. Open this page from the phone and, if installation fails,
+      send a screenshot of the result.
     </p>
-    <pre id="out">controlli in corso…</pre>
-    <p><a href="/">Torna alla landing</a></p>
+    <pre id="out" data-i18n="pwa.running">checks in progress…</pre>
+    <p><a href="/" data-i18n="pwa.back">Back to the landing page</a></p>
   </body>
 </html>

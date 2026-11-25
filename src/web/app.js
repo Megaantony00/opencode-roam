@@ -1,3 +1,7 @@
+const i18n = window.RoamI18n
+const t = (key, vars) => i18n.t(key, vars)
+i18n.apply()
+
 const chat = document.getElementById("chat")
 const composer = document.getElementById("composer")
 const input = document.getElementById("input")
@@ -13,6 +17,14 @@ const quoteSelectionButton = document.getElementById("quote-selection")
 const vpnBanner = document.getElementById("vpn-banner")
 const vpnOpen = document.getElementById("vpn-open")
 const vpnRetry = document.getElementById("vpn-retry")
+const versionBadge = document.getElementById("version")
+const settingsOpen = document.getElementById("settings-open")
+const settingsDialog = document.getElementById("settings-dialog")
+const languageSelect = document.getElementById("language-select")
+const settingsVersion = document.getElementById("settings-version")
+const checkUpdatesButton = document.getElementById("check-updates")
+const updateStatus = document.getElementById("update-status")
+const githubLink = document.getElementById("github-link")
 
 const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024
 const DRAFT_KEY = "ocb-draft"
@@ -78,6 +90,17 @@ function formatBytes(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
+function errorText(data, status) {
+  const code = String(data?.code ?? "")
+  if (code) {
+    const key = `server.${code}`
+    const translated = t(key)
+    if (translated !== key) return translated
+  }
+  if (data?.error) return String(data.error)
+  return t("server.http", { status })
+}
+
 async function post(path, body) {
   const response = await fetch(path, {
     method: "POST",
@@ -90,7 +113,7 @@ async function post(path, body) {
   } catch {
     data = {}
   }
-  if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`)
+  if (!response.ok) throw new Error(errorText(data, response.status))
   return data
 }
 
@@ -104,16 +127,38 @@ function localEntry(kind, text) {
   upsert(entry)
 }
 
+function permissionDetails(entry) {
+  const hasDetails =
+    entry.sessionTitle || entry.action || entry.reason || (entry.resources && entry.resources.length)
+  if (!hasDetails) return entry.text
+
+  const lines = []
+  if (entry.sessionTitle) lines.push(`${t("permission.session")}: ${entry.sessionTitle}`)
+  if (entry.action) lines.push(`${t("permission.action")}: ${entry.action}`)
+  if (entry.resources?.length) {
+    lines.push(`${t("permission.resource")}: ${entry.resources.join(", ")}`)
+  }
+  if (entry.reason) lines.push(`${t("permission.reason")}: ${entry.reason}`)
+  return lines.join("\n") || entry.text
+}
+
+function permissionResult(entry) {
+  if (entry.resultCode === "once") return t("permission.once")
+  if (entry.resultCode === "always") return t("permission.always")
+  if (entry.resultCode === "reject") return t("permission.reject")
+  return entry.result || t("permission.resolved")
+}
+
 function permissionCard(entry) {
   const card = h(
     "section",
     { class: `card${entry.resolved ? " resolved" : ""}` },
-    h("h3", {}, "🔐 Permesso richiesto"),
-    h("div", { class: "meta", text: entry.text }),
+    h("h3", {}, t("permission.title")),
+    h("div", { class: "meta", text: permissionDetails(entry) }),
   )
 
   if (entry.resolved) {
-    card.append(h("div", { class: "meta", text: `\n${entry.result || "Risolto"}` }))
+    card.append(h("div", { class: "meta", text: `\n${permissionResult(entry)}` }))
     return card
   }
 
@@ -142,9 +187,9 @@ function permissionCard(entry) {
     actions.append(button)
   }
 
-  add("✅ Una volta", "once", "ok")
-  add("♾️ Sempre", "always", "")
-  add("❌ Nega", "reject", "danger")
+  add(t("permission.once"), "once", "ok")
+  add(t("permission.always"), "always", "")
+  add(t("permission.reject"), "reject", "danger")
 
   card.append(actions)
   return card
@@ -158,9 +203,9 @@ function fieldControl(field) {
     const select = h(
       "select",
       { name: field.key },
-      h("option", { value: "" }, field.required ? "Scegli…" : "(nessuno)"),
-      h("option", { value: "true" }, "Sì"),
-      h("option", { value: "false" }, "No"),
+      h("option", { value: "" }, field.required ? t("form.choose") : t("form.none")),
+      h("option", { value: "true" }, t("form.yes")),
+      h("option", { value: "false" }, t("form.no")),
     )
     if (field.default === true) select.value = "true"
     if (field.default === false) select.value = "false"
@@ -179,7 +224,7 @@ function fieldControl(field) {
 
   if (field.options?.length) {
     const select = h("select", { name: field.key })
-    select.append(h("option", { value: "" }, field.required ? "Scegli…" : "(nessuno)"))
+    select.append(h("option", { value: "" }, field.required ? t("form.choose") : t("form.none")))
     for (const option of field.options) {
       const element = h("option", { value: option.value }, option.label)
       if (field.default === option.value) element.selected = true
@@ -187,11 +232,11 @@ function fieldControl(field) {
     }
 
     if (field.custom) {
-      select.append(h("option", { value: "__custom__" }, "Altro…"))
+      select.append(h("option", { value: "__custom__" }, t("form.other")))
       const custom = h("input", {
         name: `${field.key}__custom`,
         type: "text",
-        placeholder: "Scrivi il valore",
+        placeholder: t("form.writeValue"),
       })
       return h("label", {}, title, help, select, custom)
     }
@@ -215,11 +260,17 @@ function formCard(entry) {
   const card = h(
     "section",
     { class: `card${entry.resolved ? " resolved" : ""}` },
-    h("h3", {}, `📝 ${entry.form.title || "Form"}`),
+    h("h3", {}, t("form.title", { title: entry.form.title || "Form" })),
   )
 
   if (entry.resolved) {
-    card.append(h("div", { class: "meta", text: entry.result || "Risolto" }))
+    const result =
+      entry.resultCode === "cancelled"
+        ? t("form.cancelled")
+        : entry.resultCode === "sent"
+          ? t("form.sent")
+          : entry.result || t("form.resolved")
+    card.append(h("div", { class: "meta", text: result }))
     return card
   }
 
@@ -231,7 +282,7 @@ function formCard(entry) {
   const actions = h(
     "div",
     { class: "actions" },
-    h("button", { class: "ok", type: "submit" }, "✅ Invia"),
+    h("button", { class: "ok", type: "submit" }, t("form.submit")),
   )
 
   form.append(errorLine, actions)
@@ -244,7 +295,7 @@ function formCard(entry) {
       if (field.type === "boolean") {
         const control = form.elements.namedItem(field.key)
         if (!control || control.value === "") {
-          if (field.required) return (errorLine.textContent = `Campo obbligatorio: ${field.title || field.key}`)
+          if (field.required) return (errorLine.textContent = t("form.required", { field: field.title || field.key }))
           continue
         }
         answer[field.key] = control.value === "true"
@@ -256,10 +307,16 @@ function formCard(entry) {
         const values = control ? [...control.selectedOptions].map((option) => option.value) : []
         const min = field.minItems ?? (field.required ? 1 : 0)
         if (values.length < min) {
-          return (errorLine.textContent = `Scegli almeno ${min} opzioni per ${field.title || field.key}`)
+          return (errorLine.textContent = t("form.minOptions", {
+            min,
+            field: field.title || field.key,
+          }))
         }
         if (field.maxItems && values.length > field.maxItems) {
-          return (errorLine.textContent = `Massimo ${field.maxItems} opzioni per ${field.title || field.key}`)
+          return (errorLine.textContent = t("form.maxOptions", {
+            max: field.maxItems,
+            field: field.title || field.key,
+          }))
         }
         if (values.length) answer[field.key] = values
         continue
@@ -273,17 +330,17 @@ function formCard(entry) {
       }
 
       if (value === "") {
-        if (field.required) return (errorLine.textContent = `Campo obbligatorio: ${field.title || field.key}`)
+        if (field.required) return (errorLine.textContent = t("form.required", { field: field.title || field.key }))
         continue
       }
 
       if (field.type === "number" || field.type === "integer") {
         const number = Number(value)
         if (!Number.isFinite(number)) {
-          return (errorLine.textContent = `Numero non valido per ${field.title || field.key}`)
+          return (errorLine.textContent = t("form.invalidNumber", { field: field.title || field.key }))
         }
         if (field.type === "integer" && !Number.isInteger(number)) {
-          return (errorLine.textContent = `Numero intero non valido per ${field.title || field.key}`)
+          return (errorLine.textContent = t("form.invalidInteger", { field: field.title || field.key }))
         }
         answer[field.key] = number
       } else {
@@ -586,8 +643,8 @@ function messageNode(entry, kind) {
     {
       class: "quote",
       type: "button",
-      title: "Cita la selezione o il messaggio",
-      "aria-label": "Cita la selezione o il messaggio",
+      title: t("quote.messageTitle"),
+      "aria-label": t("quote.messageTitle"),
       onpointerdown: () => {
         pendingQuote = selectedTextInChat()
       },
@@ -740,7 +797,13 @@ function applyState(next) {
   const wasBusy = Boolean(state?.busy)
   state = next
   dot.className = "dot online"
-  statusBadge.textContent = next.busy ? "in esecuzione" : "connesso"
+  statusBadge.textContent = next.busy ? t("status.busy") : t("status.connected")
+
+  versionBadge.textContent = next.version ? `v${next.version}` : "—"
+  if (settingsVersion) {
+    settingsVersion.textContent = next.version || t("settings.unknownVersion")
+  }
+  if (next.repoUrl) githubLink.href = next.repoUrl
 
   const activeID = next.active?.id || ""
   const changed = activeID !== lastActiveID
@@ -759,7 +822,9 @@ function applyState(next) {
   ) {
     sessionsSelect.replaceChildren()
     for (const session of list) {
-      sessionsSelect.append(h("option", { value: session.id }, session.title || "(senza titolo)"))
+      sessionsSelect.append(
+        h("option", { value: session.id }, session.title || t("common.untitled")),
+      )
     }
     sessionsSelect.value = activeID
   }
@@ -768,10 +833,10 @@ function applyState(next) {
   attachButton.disabled = !activeID
   input.disabled = !activeID
   input.placeholder = next.busy
-    ? "OpenCode sta lavorando…"
+    ? t("composer.busy")
     : activeID
-      ? "Scrivi a OpenCode…"
-      : "Nessuna sessione attiva"
+      ? t("composer.placeholder")
+      : t("composer.noSession")
 
   if (changed) {
     renderAll()
@@ -803,7 +868,7 @@ async function handleDeepLink(next) {
   try {
     await post("/api/session", { id })
   } catch (error) {
-    localEntry("error", `Sessione non disponibile: ${error.message}`)
+    localEntry("error", t("error.sessionUnavailable", { error: error.message }))
   }
 }
 
@@ -889,11 +954,11 @@ async function checkVpnConnection() {
 function setOnline(online) {
   dot.className = `dot ${online ? "online" : "offline"}`
   if (!online) {
-    statusBadge.textContent = "offline"
+    statusBadge.textContent = t("status.offline")
     scheduleVpnProbe()
   } else {
     hideVpnNotice()
-    if (state) statusBadge.textContent = state.busy ? "in esecuzione" : "connesso"
+    if (state) statusBadge.textContent = state.busy ? t("status.busy") : t("status.connected")
   }
 }
 
@@ -981,8 +1046,8 @@ function renderAttachments() {
         "button",
         {
           type: "button",
-          title: "Rimuovi",
-          "aria-label": `Rimuovi ${file.name}`,
+          title: t("common.remove"),
+          "aria-label": t("common.removeNamed", { name: file.name }),
           onclick: () => {
             revokePreview(file)
             selectedFiles = selectedFiles.filter((candidate) => candidate !== file)
@@ -1043,7 +1108,7 @@ async function fileToAttachment(file) {
   const uri = await new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => resolve(String(reader.result))
-    reader.onerror = () => reject(new Error(`Lettura di ${file.name} fallita`))
+    reader.onerror = () => reject(new Error(t("error.readFile", { name: file.name })))
     reader.readAsDataURL(file)
   })
 
@@ -1057,7 +1122,10 @@ function addFiles(files) {
 
   const total = [...selectedFiles, ...incoming].reduce((sum, file) => sum + file.size, 0)
   if (total > MAX_ATTACHMENT_BYTES) {
-    localEntry("error", `Allegati troppo grandi: massimo ${formatBytes(MAX_ATTACHMENT_BYTES)} totali.`)
+    localEntry(
+      "error",
+      t("error.tooLarge", { size: formatBytes(MAX_ATTACHMENT_BYTES) }),
+    )
     return
   }
 
@@ -1116,7 +1184,7 @@ composer.addEventListener("submit", async (event) => {
   const text = input.value.trim()
   if ((!text && selectedFiles.length === 0) || sending || !state?.active?.id) return
   if (state?.busy) {
-    localEntry("notice", "OpenCode sta lavorando: attendi la fine del turno.")
+    localEntry("notice", t("error.busyWait"))
     return
   }
 
@@ -1191,6 +1259,60 @@ vpnRetry.addEventListener("click", () => {
   void checkVpnConnection()
 })
 
+settingsOpen.addEventListener("click", () => {
+  languageSelect.value = i18n.preference
+  settingsVersion.textContent = state?.version || t("settings.unknownVersion")
+  if (state?.repoUrl) githubLink.href = state.repoUrl
+  updateStatus.replaceChildren()
+  settingsDialog.showModal()
+})
+
+settingsDialog.addEventListener("click", (event) => {
+  if (event.target === settingsDialog) settingsDialog.close()
+})
+
+languageSelect.addEventListener("change", () => {
+  i18n.setLanguage(languageSelect.value)
+})
+
+checkUpdatesButton.addEventListener("click", async () => {
+  if (checkUpdatesButton.disabled) return
+  checkUpdatesButton.disabled = true
+  updateStatus.textContent = t("settings.checking")
+
+  try {
+    const response = await fetch("/api/update", { cache: "no-store" })
+    let data = {}
+    try {
+      data = await response.json()
+    } catch {
+      data = {}
+    }
+    if (!response.ok) throw new Error(errorText(data, response.status))
+
+    if (data.newer) {
+      updateStatus.textContent = `${t("settings.updateAvailable", {
+        version: data.latest,
+      })} ${t("settings.webUpdateHint")} `
+      if (data.url) {
+        updateStatus.append(
+          h(
+            "a",
+            { href: data.url, target: "_blank", rel: "noopener noreferrer" },
+            t("settings.openRelease"),
+          ),
+        )
+      }
+    } else {
+      updateStatus.textContent = t("settings.upToDate", { version: data.current })
+    }
+  } catch {
+    updateStatus.textContent = t("settings.updateError")
+  } finally {
+    checkUpdatesButton.disabled = false
+  }
+})
+
 window.addEventListener("online", () => {
   void checkVpnConnection()
   if (!eventSource || eventSource.readyState === EventSource.CLOSED) connect()
@@ -1252,7 +1374,7 @@ if ("serviceWorker" in navigator) {
     refreshing = true
 
     if (input.value.trim() || state?.busy) {
-      localEntry("notice", "Nuova versione pronta: ricarica quando hai finito.")
+      localEntry("notice", t("notice.newVersion"))
       return
     }
 
