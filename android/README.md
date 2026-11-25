@@ -164,6 +164,8 @@ Tested on Android 15 with the release APK:
 - **Copia** uses the Android clipboard;
 - sharing text to OpenCode Roam inserts it as a quote;
 - language switch between English and Italian;
+- native header with logo, connection status, app version, and a single gear;
+  the duplicate web brand row is hidden inside the APK;
 - version, GitHub link, and update check;
 - in-app update flow tested end-to-end from 0.1.1 to 0.1.2; the redesigned
   0.1.3 dialog awaits its first live update;

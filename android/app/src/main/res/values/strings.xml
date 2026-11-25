@@ -37,6 +37,12 @@
 
     <string name="settings_open">Settings</string>
     <string name="reload">Reload</string>
+    <string name="status_connected">connected</string>
+    <string name="status_busy">running</string>
+    <string name="status_offline">offline</string>
+    <string name="status_connecting">connecting…</string>
+    <string name="version_short">v%1$s</string>
+    <string name="reload_chat">Reload the chat</string>
     <string name="language">Language</string>
     <string name="language_system">System default</string>
     <string name="language_italian">Italiano</string>

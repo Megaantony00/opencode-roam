@@ -25,6 +25,7 @@ import android.view.Window;
 import android.view.WindowInsets;
 import android.view.WindowManager;
 import android.webkit.CookieManager;
+import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
@@ -75,12 +76,16 @@ public class MainActivity extends Activity {
     private static final int TEXT = Color.rgb(232, 234, 240);
     private static final int MUTED = Color.rgb(154, 163, 178);
     private static final int TEAL = Color.rgb(20, 184, 166);
+    private static final int WARN = Color.rgb(251, 191, 36);
     private static final int RED = Color.rgb(248, 113, 113);
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private SecureStore secureStore;
     private FrameLayout root;
     private QuoteWebView webView;
+    private TextView nativeStatusBullet;
+    private TextView nativeStatusText;
+    private TextView nativeVersionBadge;
     private String baseUrl;
     private String bridgeHost;
     private ValueCallback<Uri[]> filePathCallback;
@@ -421,11 +426,41 @@ public class MainActivity extends Activity {
         topbar.setPadding(dp(12), dp(6), dp(8), dp(6));
         topbar.setBackgroundColor(BG);
 
-        TextView title = text("OpenCode Roam", 16, TEXT, true);
-        topbar.addView(title, new LinearLayout.LayoutParams(0,
+        ImageView logo = new ImageView(this);
+        logo.setImageResource(R.mipmap.ic_launcher);
+        LinearLayout.LayoutParams logoParams = new LinearLayout.LayoutParams(dp(28), dp(28));
+        logoParams.rightMargin = dp(8);
+        topbar.addView(logo, logoParams);
+
+        LinearLayout titleColumn = new LinearLayout(this);
+        titleColumn.setOrientation(LinearLayout.VERTICAL);
+        TextView title = text("OpenCode Roam", 15, TEXT, true);
+        titleColumn.addView(title);
+
+        LinearLayout statusRow = new LinearLayout(this);
+        statusRow.setOrientation(LinearLayout.HORIZONTAL);
+        statusRow.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        nativeStatusBullet = text("•", 14, WARN, true);
+        nativeStatusBullet.setPadding(0, 0, dp(4), 0);
+        statusRow.addView(nativeStatusBullet);
+
+        nativeStatusText = text(getString(R.string.status_connecting), 11, MUTED, false);
+        statusRow.addView(nativeStatusText);
+
+        nativeVersionBadge = text(getString(R.string.version_short, BuildConfig.VERSION_NAME), 10, TEXT, true);
+        nativeVersionBadge.setBackground(rounded(PANEL_2, 4));
+        nativeVersionBadge.setPadding(dp(4), dp(1), dp(4), dp(1));
+        LinearLayout.LayoutParams versionParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        versionParams.leftMargin = dp(6);
+        statusRow.addView(nativeVersionBadge, versionParams);
+        titleColumn.addView(statusRow);
+
+        topbar.addView(titleColumn, new LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
-        Button reload = topbarButton("⟳", getString(R.string.reload));
+        Button reload = topbarButton("⟳", getString(R.string.reload_chat));
         reload.setOnClickListener(view -> {
             if (webView != null) webView.reload();
         });
@@ -451,6 +486,9 @@ public class MainActivity extends Activity {
         webSettings.setAllowFileAccess(false);
         webSettings.setAllowContentAccess(true);
         webSettings.setSupportMultipleWindows(false);
+        webSettings.setUserAgentString(
+                webSettings.getUserAgentString() + " OpenCodeRoamApp/" + BuildConfig.VERSION_NAME);
+        webView.addJavascriptInterface(new NativeHeaderBridge(), "ocbNativeHeader");
 
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
@@ -599,6 +637,54 @@ public class MainActivity extends Activity {
         } catch (Exception error) {
             showSettings(true, getString(R.string.cookie_failed));
         }
+    }
+
+    private final class NativeHeaderBridge {
+        @JavascriptInterface
+        public void update(String status, String version) {
+            runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed()) return;
+                if (webView == null || bridgeHost == null) return;
+                Uri current = Uri.parse(String.valueOf(webView.getUrl()));
+                if (current.getHost() == null
+                        || !current.getHost().equalsIgnoreCase(bridgeHost)) return;
+                applyNativeHeader(status, version);
+            });
+        }
+    }
+
+    private void applyNativeHeader(String status, String version) {
+        if (nativeStatusBullet == null || nativeStatusText == null || nativeVersionBadge == null) {
+            return;
+        }
+
+        String value = status == null ? "" : status.toLowerCase(Locale.ROOT);
+        int color;
+        int label;
+        if ("connected".equals(value)) {
+            color = TEAL;
+            label = R.string.status_connected;
+        } else if ("busy".equals(value)) {
+            color = TEAL;
+            label = R.string.status_busy;
+        } else if ("offline".equals(value)) {
+            color = RED;
+            label = R.string.status_offline;
+        } else {
+            color = WARN;
+            label = R.string.status_connecting;
+        }
+
+        nativeStatusBullet.setTextColor(color);
+        nativeStatusText.setText(label);
+        if ("offline".equals(value)) {
+            nativeStatusText.setTextColor(RED);
+        } else if ("connected".equals(value) || "busy".equals(value)) {
+            nativeStatusText.setTextColor(MUTED);
+        } else {
+            nativeStatusText.setTextColor(WARN);
+        }
+        nativeVersionBadge.setText(getString(R.string.version_short, BuildConfig.VERSION_NAME));
     }
 
     private boolean handleUrl(Uri uri) {

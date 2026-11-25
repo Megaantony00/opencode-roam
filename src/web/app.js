@@ -2,6 +2,19 @@ const i18n = window.RoamI18n
 const t = (key, vars) => i18n.t(key, vars)
 i18n.apply()
 
+const isAndroidApp = /OpenCodeRoamApp\//.test(navigator.userAgent)
+if (isAndroidApp) document.documentElement.classList.add("ocb-android")
+
+function syncNativeHeader(status, version) {
+  try {
+    window.ocbNativeHeader?.update(status, version || "")
+  } catch {
+    // The native bridge is optional; the browser UI works without it.
+  }
+}
+
+syncNativeHeader("connecting", "")
+
 const chat = document.getElementById("chat")
 const composer = document.getElementById("composer")
 const input = document.getElementById("input")
@@ -804,6 +817,7 @@ function applyState(next) {
     settingsVersion.textContent = next.version || t("settings.unknownVersion")
   }
   if (next.repoUrl) githubLink.href = next.repoUrl
+  syncNativeHeader(next.busy ? "busy" : "connected", next.version)
 
   const activeID = next.active?.id || ""
   const changed = activeID !== lastActiveID
@@ -915,11 +929,13 @@ function scheduleVpnCheck() {
 
 function showVpnNotice() {
   vpnBanner.hidden = false
+  syncNativeHeader("offline", state?.version)
   scheduleVpnCheck()
 }
 
 function hideVpnNotice() {
   vpnBanner.hidden = true
+  if (state) syncNativeHeader(state.busy ? "busy" : "connected", state.version)
   if (vpnTimer) {
     clearInterval(vpnTimer)
     vpnTimer = null
@@ -955,10 +971,12 @@ function setOnline(online) {
   dot.className = `dot ${online ? "online" : "offline"}`
   if (!online) {
     statusBadge.textContent = t("status.offline")
+    syncNativeHeader("offline", state?.version)
     scheduleVpnProbe()
   } else {
     hideVpnNotice()
     if (state) statusBadge.textContent = state.busy ? t("status.busy") : t("status.connected")
+    syncNativeHeader(state?.busy ? "busy" : "connected", state?.version)
   }
 }
 

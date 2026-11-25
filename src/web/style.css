@@ -52,6 +52,27 @@ header.header-hidden {
   transform: translateY(-110%);
 }
 
+html.ocb-android .brand {
+  display: none;
+}
+
+html.ocb-android #settings-open {
+  display: none;
+}
+
+html.ocb-android header {
+  justify-content: flex-end;
+}
+
+html.ocb-android .header-actions {
+  flex: 1;
+}
+
+html.ocb-android .header-actions select {
+  flex: 1;
+  max-width: none;
+}
+
 .brand {
   display: flex;
   align-items: center;
