@@ -42,6 +42,8 @@ self-hosted remote control for it:
   encrypted token storage.
 - English and Italian UI, with the system language as the default.
 - Version, update check, and direct APK update in the Android settings.
+- Native Android connection screen for bridge/Tailscale errors, with a real
+  health-check retry instead of the browser error page.
 - Tests for the bridge, transports, setup config, web routes, SSE, and privacy
   filters.
 

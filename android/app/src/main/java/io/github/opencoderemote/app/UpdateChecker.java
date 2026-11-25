@@ -20,13 +20,15 @@ public final class UpdateChecker {
         public final String apkUrl;
         public final String apkName;
         public final long apkSize;
+        public final String notes;
 
-        Release(String version, String releaseUrl, String apkUrl, String apkName, long apkSize) {
+        Release(String version, String releaseUrl, String apkUrl, String apkName, long apkSize, String notes) {
             this.version = version;
             this.releaseUrl = releaseUrl;
             this.apkUrl = apkUrl == null ? "" : apkUrl;
             this.apkName = apkName == null ? "" : apkName;
             this.apkSize = apkSize;
+            this.notes = notes == null ? "" : notes;
         }
     }
 
@@ -86,6 +88,8 @@ public final class UpdateChecker {
                 String apkUrl = "";
                 String apkName = "";
                 long apkSize = 0;
+                String notes = release.optString("body", "").trim();
+                if (notes.length() > 600) notes = notes.substring(0, 600).trim() + "…";
                 JSONArray assets = release.optJSONArray("assets");
                 if (assets != null) {
                     JSONObject fallback = null;
@@ -107,7 +111,7 @@ public final class UpdateChecker {
                     }
                 }
 
-                post(listener, new Release(tag, htmlUrl, apkUrl, apkName, apkSize), false, null);
+                post(listener, new Release(tag, htmlUrl, apkUrl, apkName, apkSize, notes), false, null);
             } catch (Exception error) {
                 post(listener, null, false, error.getClass().getSimpleName());
             } finally {

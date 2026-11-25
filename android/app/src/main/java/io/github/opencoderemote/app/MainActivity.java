@@ -1,7 +1,7 @@
 package io.github.opencoderemote.app;
 
 import android.app.Activity;
-import android.app.AlertDialog;
+import android.app.Dialog;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.ClipData;
@@ -11,6 +11,7 @@ import android.content.IntentFilter;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageInstaller;
 import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
@@ -20,7 +21,9 @@ import android.text.InputType;
 import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
 import android.view.WindowInsets;
+import android.view.WindowManager;
 import android.webkit.CookieManager;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -56,6 +59,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -86,7 +90,7 @@ public class MainActivity extends Activity {
     private boolean onSettingsScreen;
     private boolean reopenSettings;
     private UpdateChecker.Release pendingInstallPermission;
-    private AlertDialog downloadDialog;
+    private Dialog downloadDialog;
     private volatile boolean downloadCancelled;
     private BroadcastReceiver installReceiver;
 
@@ -495,19 +499,34 @@ public class MainActivity extends Activity {
                         // Keep the app usable if the page is not ready yet.
                     }
                 }
+
+                view.evaluateJavascript(
+                        "(function(){"
+                                + "return !!(document.querySelector('main.offline')"
+                                + "||document.querySelector('[data-ocb-offline]'));"
+                                + "})()",
+                        value -> {
+                            if ("true".equals(value)) {
+                                view.post(() -> showNativeOffline(getString(R.string.offline_message)));
+                            }
+                        });
             }
 
             @Override
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
                 if (request.isForMainFrame()) {
-                    showNativeOffline();
+                    showNativeOffline(getString(R.string.offline_message));
                 }
             }
 
             @Override
             public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse response) {
-                if (request.isForMainFrame() && response.getStatusCode() == 401) {
-                    showSettings(true, getString(R.string.token_rejected));
+                if (!request.isForMainFrame()) return;
+                int code = response.getStatusCode();
+                if (code == 401) {
+                    view.post(() -> showSettings(true, getString(R.string.token_rejected)));
+                } else {
+                    view.post(() -> showHttpError(code));
                 }
             }
         });
@@ -605,6 +624,10 @@ public class MainActivity extends Activity {
     }
 
     private void showNativeOffline() {
+        showNativeOffline("");
+    }
+
+    private void showNativeOffline(String message) {
         onSettingsScreen = false;
         destroyWebView();
         root.removeAllViews();
@@ -616,17 +639,22 @@ public class MainActivity extends Activity {
         layout.setBackgroundColor(BG);
 
         layout.addView(text(getString(R.string.offline_title), 24, TEXT, true));
-        TextView message = text(getString(R.string.offline_message), 15, MUTED, false);
-        message.setPadding(0, dp(10), 0, dp(20));
-        message.setGravity(android.view.Gravity.CENTER);
-        layout.addView(message);
+        TextView detail = text(getString(R.string.offline_message), 15, MUTED, false);
+        detail.setPadding(0, dp(10), 0, dp(8));
+        detail.setGravity(android.view.Gravity.CENTER);
+        layout.addView(detail);
+
+        TextView status = text(message == null ? "" : message, 13, message == null || message.isEmpty() ? MUTED : RED, false);
+        status.setGravity(android.view.Gravity.CENTER);
+        status.setPadding(0, 0, 0, dp(12));
+        layout.addView(status);
 
         Button tailscale = button(getString(R.string.open_tailscale));
         tailscale.setOnClickListener(view -> handleUrl(Uri.parse("tailscale://navigate")));
         layout.addView(tailscale);
 
         Button retry = button(getString(R.string.retry));
-        retry.setOnClickListener(view -> showChat());
+        retry.setOnClickListener(view -> retryConnection(retry, status));
         layout.addView(retry);
 
         Button settings = button(getString(R.string.settings));
@@ -636,6 +664,103 @@ public class MainActivity extends Activity {
         root.addView(layout, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
+    }
+
+    private void showHttpError(int code) {
+        onSettingsScreen = false;
+        destroyWebView();
+        root.removeAllViews();
+
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setGravity(android.view.Gravity.CENTER);
+        layout.setPadding(dp(28), dp(28), dp(28), dp(28));
+        layout.setBackgroundColor(BG);
+
+        layout.addView(text(getString(R.string.http_error_title), 24, TEXT, true));
+        TextView detail = text(getString(R.string.http_error_message, code), 15, MUTED, false);
+        detail.setPadding(0, dp(10), 0, dp(8));
+        detail.setGravity(android.view.Gravity.CENTER);
+        layout.addView(detail);
+
+        TextView hint = text(getString(R.string.http_error_hint), 13, MUTED, false);
+        hint.setPadding(0, 0, 0, dp(8));
+        hint.setGravity(android.view.Gravity.CENTER);
+        layout.addView(hint);
+
+        TextView status = text("", 13, MUTED, false);
+        status.setGravity(android.view.Gravity.CENTER);
+        status.setPadding(0, 0, 0, dp(12));
+        layout.addView(status);
+
+        Button retry = button(getString(R.string.retry));
+        retry.setOnClickListener(view -> retryConnection(retry, status));
+        layout.addView(retry);
+
+        Button settings = button(getString(R.string.settings));
+        settings.setOnClickListener(view -> showSettings(false, null));
+        layout.addView(settings);
+
+        Button tailscale = button(getString(R.string.open_tailscale));
+        tailscale.setOnClickListener(view -> handleUrl(Uri.parse("tailscale://navigate")));
+        layout.addView(tailscale);
+
+        root.addView(layout, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT));
+    }
+
+    private void retryConnection(Button retry, TextView status) {
+        if (baseUrl == null || baseUrl.isEmpty()) {
+            showSettings(true, null);
+            return;
+        }
+
+        retry.setEnabled(false);
+        if (status != null) {
+            status.setTextColor(MUTED);
+            status.setText(R.string.checking_connection);
+        }
+
+        final String healthUrl = baseUrl + "/healthz";
+        try {
+            executor.execute(() -> {
+                HttpURLConnection connection = null;
+                int code = 0;
+                try {
+                    connection = (HttpURLConnection) new URL(healthUrl).openConnection();
+                    connection.setRequestMethod("GET");
+                    connection.setConnectTimeout(6000);
+                    connection.setReadTimeout(6000);
+                    connection.setRequestProperty("User-Agent", "OpenCodeRoam-Android");
+                    code = connection.getResponseCode();
+                } catch (Exception ignored) {
+                    code = 0;
+                } finally {
+                    if (connection != null) connection.disconnect();
+                }
+
+                final int result = code;
+                runOnUiThread(() -> {
+                    if (isFinishing() || isDestroyed()) return;
+                    if (result == 200) {
+                        showChat();
+                        return;
+                    }
+                    retry.setEnabled(true);
+                    if (status != null) {
+                        status.setTextColor(RED);
+                        status.setText(R.string.still_unreachable);
+                    }
+                });
+            });
+        } catch (Exception error) {
+            retry.setEnabled(true);
+            if (status != null) {
+                status.setTextColor(RED);
+                status.setText(R.string.still_unreachable);
+            }
+        }
     }
 
     private void runUpdateCheck(boolean manual, Button button, TextView status) {
@@ -676,17 +801,65 @@ public class MainActivity extends Activity {
     }
 
     private void showUpdateDialog(UpdateChecker.Release release) {
-        new AlertDialog.Builder(this)
-                .setTitle(R.string.update_available_title)
-                .setMessage(getString(
-                        R.string.update_available_message,
-                        release.version,
-                        BuildConfig.VERSION_NAME))
-                .setPositiveButton(R.string.update_now, (dialog, which) -> requestInstall(release))
-                .setNeutralButton(R.string.open_release_page,
-                        (dialog, which) -> handleUrl(Uri.parse(release.releaseUrl)))
-                .setNegativeButton(R.string.later, null)
-                .show();
+        Dialog dialog = new Dialog(this);
+        LinearLayout card = cardLayout();
+
+        ImageView icon = new ImageView(this);
+        icon.setImageResource(R.mipmap.ic_launcher);
+        LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(dp(46), dp(46));
+        iconParams.bottomMargin = dp(12);
+        card.addView(icon, iconParams);
+
+        card.addView(eyebrow(getString(R.string.update_eyebrow)));
+        card.addView(text(getString(R.string.update_available_title), 22, TEXT, true));
+
+        TextView version = text(getString(
+                R.string.update_version_line,
+                BuildConfig.VERSION_NAME,
+                release.version), 14, MUTED, false);
+        version.setPadding(0, dp(6), 0, dp(10));
+        card.addView(version);
+
+        if (!release.notes.isEmpty()) {
+            TextView notes = text(release.notes, 12, MUTED, false);
+            notes.setPadding(0, 0, 0, dp(10));
+            notes.setMaxLines(7);
+            notes.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            card.addView(notes);
+        }
+
+        if (release.apkSize > 0) {
+            TextView size = text(getString(R.string.update_size, formatSize(release.apkSize)), 12, MUTED, false);
+            size.setPadding(0, 0, 0, dp(4));
+            card.addView(size);
+        }
+
+        Button primary = primaryButton(getString(
+                release.apkUrl.isEmpty() ? R.string.open_release_page : R.string.update_now));
+        primary.setOnClickListener(view -> {
+            dialog.dismiss();
+            if (release.apkUrl.isEmpty()) {
+                handleUrl(Uri.parse(release.releaseUrl));
+            } else {
+                requestInstall(release);
+            }
+        });
+        card.addView(primary);
+
+        Button later = secondaryButton(getString(R.string.later));
+        later.setOnClickListener(view -> dialog.dismiss());
+        card.addView(later);
+
+        if (!release.apkUrl.isEmpty()) {
+            TextView page = linkButton(getString(R.string.open_release_page));
+            page.setOnClickListener(view -> {
+                dialog.dismiss();
+                handleUrl(Uri.parse(release.releaseUrl));
+            });
+            card.addView(page);
+        }
+
+        showCard(dialog, card);
     }
 
     private void requestInstall(UpdateChecker.Release release) {
@@ -696,22 +869,36 @@ public class MainActivity extends Activity {
             return;
         }
         if (!canInstallPackages()) {
-            pendingInstallPermission = release;
-            new AlertDialog.Builder(this)
-                    .setTitle(R.string.install_permission_title)
-                    .setMessage(R.string.install_permission_message)
-                    .setPositiveButton(R.string.open_settings, (dialog, which) -> {
-                        try {
-                            startActivity(new Intent(
-                                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                                    Uri.parse("package:" + getPackageName())));
-                        } catch (Exception error) {
-                            pendingInstallPermission = null;
-                            Toast.makeText(this, R.string.install_failed, Toast.LENGTH_LONG).show();
-                        }
-                    })
-                    .setNegativeButton(R.string.cancel, (dialog, which) -> pendingInstallPermission = null)
-                    .show();
+            Dialog dialog = new Dialog(this);
+            LinearLayout card = cardLayout();
+            card.addView(eyebrow(getString(R.string.permission_eyebrow)));
+            card.addView(text(getString(R.string.install_permission_title), 20, TEXT, true));
+            TextView body = text(getString(R.string.install_permission_message), 14, MUTED, false);
+            body.setPadding(0, dp(8), 0, 0);
+            card.addView(body);
+
+            Button open = primaryButton(getString(R.string.open_settings));
+            open.setOnClickListener(view -> {
+                dialog.dismiss();
+                pendingInstallPermission = release;
+                try {
+                    startActivity(new Intent(
+                            Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                            Uri.parse("package:" + getPackageName())));
+                } catch (Exception error) {
+                    pendingInstallPermission = null;
+                    Toast.makeText(this, R.string.install_failed, Toast.LENGTH_LONG).show();
+                }
+            });
+            card.addView(open);
+
+            Button cancel = secondaryButton(getString(R.string.cancel));
+            cancel.setOnClickListener(view -> {
+                pendingInstallPermission = null;
+                dialog.dismiss();
+            });
+            card.addView(cancel);
+            showCard(dialog, card);
             return;
         }
         downloadAndInstall(release);
@@ -737,28 +924,33 @@ public class MainActivity extends Activity {
         File target = new File(directory, "opencode-roam-" + safeVersion + ".apk");
         downloadCancelled = false;
 
+        Dialog dialog = new Dialog(this);
+        dialog.setCancelable(false);
+        LinearLayout card = cardLayout();
+        card.addView(eyebrow(getString(R.string.download_eyebrow)));
+        card.addView(text(getString(R.string.downloading_update, release.version), 18, TEXT, true));
+
         ProgressBar bar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         bar.setMax(100);
         bar.setProgress(0);
-        TextView label = text(getString(R.string.downloading_update, release.version), 14, TEXT, false);
-        TextView percent = text("", 12, MUTED, false);
-        percent.setPadding(0, dp(6), 0, 0);
+        bar.setPadding(0, dp(16), 0, dp(6));
+        card.addView(bar);
 
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(20), dp(16), dp(20), dp(4));
-        box.addView(label);
-        box.addView(bar);
-        box.addView(percent);
+        TextView percent = text(getString(R.string.download_progress, 0), 12, MUTED, false);
+        card.addView(percent);
 
-        downloadDialog = new AlertDialog.Builder(this)
-                .setView(box)
-                .setCancelable(false)
-                .setNegativeButton(R.string.cancel, (dialog, which) -> {
-                    downloadCancelled = true;
-                    downloadDialog = null;
-                })
-                .show();
+        Button cancel = secondaryButton(getString(R.string.cancel));
+        cancel.setOnClickListener(view -> {
+            downloadCancelled = true;
+            if (downloadDialog != null) {
+                downloadDialog.dismiss();
+                downloadDialog = null;
+            }
+        });
+        card.addView(cancel);
+
+        downloadDialog = dialog;
+        showCard(dialog, card);
 
         executor.execute(() -> {
             HttpURLConnection connection = null;
@@ -831,12 +1023,11 @@ public class MainActivity extends Activity {
                     }
                     if (downloadCancelled) return;
                     if (isFinishing() || isDestroyed()) return;
-                    new AlertDialog.Builder(MainActivity.this)
-                            .setMessage(R.string.download_failed)
-                            .setPositiveButton(R.string.open_release_page,
-                                    (dialog, which) -> handleUrl(Uri.parse(release.releaseUrl)))
-                            .setNegativeButton(R.string.cancel, null)
-                            .show();
+                    showErrorCard(
+                            getString(R.string.download_failed_title),
+                            getString(R.string.download_failed),
+                            getString(R.string.open_release_page),
+                            () -> handleUrl(Uri.parse(release.releaseUrl)));
                 });
             } finally {
                 if (output != null) {
@@ -863,13 +1054,29 @@ public class MainActivity extends Activity {
     }
 
     private void showInstallDialog(File apk) {
-        new AlertDialog.Builder(this)
-                .setTitle(R.string.update_ready_title)
-                .setMessage(R.string.update_ready_message)
-                .setPositiveButton(R.string.install, (dialog, which) -> installApk(apk))
-                .setNegativeButton(R.string.cancel, (dialog, which) -> apk.delete())
-                .setCancelable(false)
-                .show();
+        Dialog dialog = new Dialog(this);
+        dialog.setCancelable(false);
+        LinearLayout card = cardLayout();
+        card.addView(eyebrow(getString(R.string.ready_eyebrow)));
+        card.addView(text(getString(R.string.update_ready_title), 20, TEXT, true));
+        TextView body = text(getString(R.string.update_ready_message), 14, MUTED, false);
+        body.setPadding(0, dp(8), 0, 0);
+        card.addView(body);
+
+        Button install = primaryButton(getString(R.string.install));
+        install.setOnClickListener(view -> {
+            dialog.dismiss();
+            installApk(apk);
+        });
+        card.addView(install);
+
+        Button cancel = secondaryButton(getString(R.string.cancel));
+        cancel.setOnClickListener(view -> {
+            dialog.dismiss();
+            apk.delete();
+        });
+        card.addView(cancel);
+        showCard(dialog, card);
     }
 
     private void installApk(File apk) {
@@ -1078,6 +1285,111 @@ public class MainActivity extends Activity {
             return;
         }
         super.onActivityResult(requestCode, resultCode, data);
+    }
+
+    private LinearLayout cardLayout() {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(22), dp(20), dp(22), dp(18));
+        card.setBackground(rounded(PANEL, 20));
+        card.setElevation(dp(14));
+        return card;
+    }
+
+    private TextView eyebrow(String value) {
+        TextView view = text(value, 11, TEAL, true);
+        view.setLetterSpacing(0.12f);
+        view.setPadding(0, 0, 0, dp(8));
+        return view;
+    }
+
+    private Button primaryButton(String label) {
+        Button button = new Button(this);
+        button.setText(label);
+        button.setAllCaps(false);
+        button.setTextColor(BG);
+        button.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        button.setTypeface(button.getTypeface(), android.graphics.Typeface.BOLD);
+        button.setBackground(rounded(TEAL, 12));
+        button.setPadding(dp(14), dp(12), dp(14), dp(12));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        params.topMargin = dp(14);
+        button.setLayoutParams(params);
+        return button;
+    }
+
+    private Button secondaryButton(String label) {
+        Button button = new Button(this);
+        button.setText(label);
+        button.setAllCaps(false);
+        button.setTextColor(MUTED);
+        button.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        button.setBackgroundColor(Color.TRANSPARENT);
+        button.setPadding(dp(14), dp(10), dp(14), dp(10));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        params.topMargin = dp(2);
+        button.setLayoutParams(params);
+        return button;
+    }
+
+    private TextView linkButton(String label) {
+        TextView view = text(label, 13, TEAL, false);
+        view.setGravity(android.view.Gravity.CENTER);
+        view.setPadding(0, dp(10), 0, 0);
+        view.setClickable(true);
+        view.setFocusable(true);
+        return view;
+    }
+
+    private void showCard(Dialog dialog, LinearLayout card) {
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(card);
+        dialog.show();
+
+        Window window = dialog.getWindow();
+        if (window == null) return;
+        window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+        WindowManager.LayoutParams params = window.getAttributes();
+        params.dimAmount = 0.68f;
+        window.setAttributes(params);
+        int width = (int) (getResources().getDisplayMetrics().widthPixels * 0.9f);
+        window.setLayout(Math.min(width, dp(430)), ViewGroup.LayoutParams.WRAP_CONTENT);
+    }
+
+    private String formatSize(long bytes) {
+        if (bytes <= 0) return "—";
+        if (bytes < 1024) return bytes + " B";
+        if (bytes < 1024 * 1024) {
+            return String.format(Locale.getDefault(), "%.0f KB", bytes / 1024.0);
+        }
+        return String.format(Locale.getDefault(), "%.1f MB", bytes / (1024.0 * 1024.0));
+    }
+
+    private void showErrorCard(String title, String message, String positiveLabel, Runnable positive) {
+        Dialog dialog = new Dialog(this);
+        LinearLayout card = cardLayout();
+        card.addView(eyebrow(getString(R.string.error_eyebrow)));
+        card.addView(text(title, 20, TEXT, true));
+        TextView body = text(message, 14, MUTED, false);
+        body.setPadding(0, dp(8), 0, 0);
+        card.addView(body);
+
+        Button action = primaryButton(positiveLabel);
+        action.setOnClickListener(view -> {
+            dialog.dismiss();
+            if (positive != null) positive.run();
+        });
+        card.addView(action);
+
+        Button close = secondaryButton(getString(R.string.close));
+        close.setOnClickListener(view -> dialog.dismiss());
+        card.addView(close);
+        showCard(dialog, card);
     }
 
     private void destroyWebView() {

@@ -1,6 +1,6 @@
 # Licensing and compliance notes
 
-This is an engineering audit of the OpenCode Roam repository at version 0.1.2.
+This is an engineering audit of the OpenCode Roam repository at version 0.1.3.
 It is not legal advice. For commercial use or a store release, have a lawyer
 review the project, the brand assets, and your distribution model.
 

@@ -11,7 +11,9 @@ web page cannot provide:
 - logout / forget token;
 - language switch (English/Italian, system default);
 - version, GitHub repository link, and update check;
+- redesigned update dialog with release notes, APK size, and progress;
 - in-app APK download and Android installer;
+- native connection error screen with HTTP status and a real retry check;
 - text share target;
 - file chooser for attachments.
 
@@ -90,15 +92,25 @@ buildConfigField "String", "GITHUB_REPO", "\"Megaantony00/opencode-roam\""
 ```
 
 The app checks `releases/latest` on start and from **Settings → Check for
-updates**. If a newer version exists, it downloads the release APK from the
-GitHub asset over HTTPS, verifies that the archive package name matches, and
-opens the Android installer. The app does not install silently: Android asks for
-confirmation and may require enabling **Allow from this source** for OpenCode
-Roam. The signing certificate check performed by Android prevents installing an
-APK signed with a different key.
+updates**. If a newer version exists, it shows a custom dark dialog with the
+version, release notes, APK size, and a download progress bar. It downloads the
+release APK from the GitHub asset over HTTPS, verifies that the archive package
+name matches, and opens the Android installer. The app does not install
+silently: Android asks for confirmation and may require enabling **Allow from
+this source** for OpenCode Roam. The signing certificate check performed by
+Android prevents installing an APK signed with a different key.
 
 The release page remains available as a fallback if the APK asset is missing or
 the download fails.
+
+## Connection errors
+
+When the bridge or Tailscale is unreachable, the app shows a native screen
+instead of the WebView error page. **Retry** first calls `/healthz`: if it does
+not return 200, the app stays on the native screen. HTTP errors such as 502,
+500, or 404 also get a native screen with the status code, Retry, Settings, and
+Open Tailscale. The web UI's service-worker offline page is detected and
+replaced by the same native screen.
 
 ## Release signing
 
@@ -153,7 +165,11 @@ Tested on Android 15 with the release APK:
 - sharing text to OpenCode Roam inserts it as a quote;
 - language switch between English and Italian;
 - version, GitHub link, and update check;
-- update dialog against a newer GitHub release, APK download, and installer.
+- in-app update flow tested end-to-end from 0.1.1 to 0.1.2; the redesigned
+  0.1.3 dialog awaits its first live update;
+- native HTTP 502 screen and retry tested with the bridge stopped and restarted;
+- the retry stays on the native screen while the bridge is down and loads the
+  chat once `/healthz` returns 200.
 
 ## Limitations
 

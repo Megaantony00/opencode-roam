@@ -49,25 +49,40 @@
     <string name="update_check_failed">Impossibile controllare gli aggiornamenti. Riprova più tardi.</string>
     <string name="update_available_title">Aggiornamento disponibile</string>
     <string name="update_available_message">OpenCode Roam %1$s è disponibile. Hai la versione %2$s.</string>
+    <string name="update_eyebrow">AGGIORNAMENTO</string>
+    <string name="update_version_line">Hai la %1$s. La nuova versione è la %2$s.</string>
+    <string name="update_size">Dimensione APK: %1$s</string>
     <string name="update_now">Aggiorna ora</string>
     <string name="later">Dopo</string>
     <string name="open_release_page">Pagina release</string>
     <string name="update_apk_missing">Questa release non contiene un APK. Apri la pagina release per scaricarlo.</string>
 
     <string name="downloading_update">Download di OpenCode Roam %1$s…</string>
+    <string name="download_eyebrow">DOWNLOAD</string>
     <string name="download_progress">%1$d%%</string>
     <string name="download_failed">Download fallito. Apri la pagina release.</string>
+    <string name="download_failed_title">Download fallito</string>
     <string name="download_cancelled">Download annullato.</string>
     <string name="update_ready_title">Pronto per l’installazione</string>
     <string name="update_ready_message">Android chiederà conferma dell’installazione. L’app mantiene il token.</string>
+    <string name="ready_eyebrow">PRONTO</string>
     <string name="install">Installa</string>
     <string name="cancel">Annulla</string>
+    <string name="close">Chiudi</string>
 
     <string name="install_permission_title">Consenti installazioni</string>
     <string name="install_permission_message">Android richiede il permesso di installare aggiornamenti per OpenCode Roam. Attiva “Consenti da questa origine”, poi riprova.</string>
+    <string name="permission_eyebrow">PERMESSO</string>
     <string name="open_settings">Apri impostazioni</string>
     <string name="install_failed">Impossibile avviare l’installer.</string>
     <string name="install_result_failed">Installazione fallita.</string>
+
+    <string name="http_error_title">Errore del bridge</string>
+    <string name="http_error_message">Il bridge ha risposto con HTTP %1$d. Potrebbe essere spento o configurato male.</string>
+    <string name="http_error_hint">Controlla che il bridge sia avviato e che Tailscale sia connesso.</string>
+    <string name="error_eyebrow">ERRORE</string>
+    <string name="checking_connection">Controllo connessione…</string>
+    <string name="still_unreachable">Ancora non raggiungibile. Controlla Tailscale e il bridge.</string>
 
     <string name="github_repository">Repository GitHub</string>
     <string name="github_open">Apri il repository GitHub</string>
