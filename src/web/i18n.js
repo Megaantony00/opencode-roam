@@ -33,7 +33,6 @@
       "composer.attachTitle": "Attach files",
 
       "quote.selection": "❝ Quote selection",
-      "quote.messageTitle": "Quote the selection or the message",
       "quote.jumpTitle": "Go to the original message",
       "quote.notFound": "Original message not found in the loaded history.",
 
@@ -181,7 +180,6 @@
       "composer.attachTitle": "Allega file",
 
       "quote.selection": "❝ Cita selezione",
-      "quote.messageTitle": "Cita la selezione o il messaggio",
       "quote.jumpTitle": "Vai al messaggio originale",
       "quote.notFound": "Messaggio originale non trovato nella cronologia caricata.",
 

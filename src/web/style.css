@@ -333,22 +333,6 @@ select {
   width: 100%;
 }
 
-.quote {
-  align-self: flex-end;
-  padding: 1px 7px;
-  font-size: 12px;
-  line-height: 1.4;
-  font-weight: 400;
-  background: transparent;
-  border: 1px solid var(--line);
-  color: var(--muted);
-}
-
-.quote:hover {
-  color: var(--text);
-  border-color: var(--accent);
-}
-
 .quote-selection {
   position: fixed;
   left: 50%;

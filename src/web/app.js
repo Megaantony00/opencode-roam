@@ -52,7 +52,6 @@ let state = null
 let lastActiveID = null
 let sending = false
 let deepLinkDone = false
-let pendingQuote = ""
 let floatingQuoteText = ""
 let lastViewSent = 0
 let lastScrollY = window.scrollY
@@ -784,25 +783,7 @@ function messageNode(entry, kind) {
     }
   }
 
-  const quote = h(
-    "button",
-    {
-      class: "quote",
-      type: "button",
-      title: t("quote.messageTitle"),
-      "aria-label": t("quote.messageTitle"),
-      onpointerdown: () => {
-        pendingQuote = selectedTextInChat()
-      },
-      onclick: () => {
-        quoteEntry(entry, pendingQuote)
-        pendingQuote = ""
-      },
-    },
-    "↩︎",
-  )
-
-  return h("div", { class: `msg-wrap ${kind}` }, body, quote)
+  return h("div", { class: `msg-wrap ${kind}` }, body)
 }
 
 function renderEntry(entry) {
