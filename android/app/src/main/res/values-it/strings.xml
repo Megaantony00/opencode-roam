@@ -55,9 +55,8 @@
     <string name="update_check_failed">Impossibile controllare gli aggiornamenti. Riprova più tardi.</string>
     <string name="update_available_title">Aggiornamento disponibile</string>
     <string name="update_available_message">OpenCode Roam %1$s è disponibile. Hai la versione %2$s.</string>
-    <string name="update_eyebrow">AGGIORNAMENTO</string>
-    <string name="update_version_line">Hai la %1$s. La nuova versione è la %2$s.</string>
-    <string name="update_size">Dimensione APK: %1$s</string>
+    <string name="update_from_to">Dalla %1$s alla %2$s</string>
+    <string name="update_summary">Novità e correzioni. Apri la pagina release per i dettagli.</string>
     <string name="update_now">Aggiorna ora</string>
     <string name="later">Dopo</string>
     <string name="open_release_page">Pagina release</string>

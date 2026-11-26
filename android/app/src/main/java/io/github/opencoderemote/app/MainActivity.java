@@ -890,35 +890,22 @@ public class MainActivity extends Activity {
         Dialog dialog = new Dialog(this);
         LinearLayout card = cardLayout();
 
-        ImageView icon = new ImageView(this);
-        icon.setImageResource(R.mipmap.ic_launcher);
-        LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(dp(46), dp(46));
-        iconParams.bottomMargin = dp(12);
-        card.addView(icon, iconParams);
+        card.addView(text(getString(R.string.update_available_title), 21, TEXT, true));
 
-        card.addView(eyebrow(getString(R.string.update_eyebrow)));
-        card.addView(text(getString(R.string.update_available_title), 22, TEXT, true));
-
-        TextView version = text(getString(
-                R.string.update_version_line,
+        String subtitleText = getString(
+                R.string.update_from_to,
                 BuildConfig.VERSION_NAME,
-                release.version), 14, MUTED, false);
-        version.setPadding(0, dp(6), 0, dp(10));
-        card.addView(version);
-
-        if (!release.notes.isEmpty()) {
-            TextView notes = text(release.notes, 12, MUTED, false);
-            notes.setPadding(0, 0, 0, dp(10));
-            notes.setMaxLines(7);
-            notes.setEllipsize(android.text.TextUtils.TruncateAt.END);
-            card.addView(notes);
-        }
-
+                release.version);
         if (release.apkSize > 0) {
-            TextView size = text(getString(R.string.update_size, formatSize(release.apkSize)), 12, MUTED, false);
-            size.setPadding(0, 0, 0, dp(4));
-            card.addView(size);
+            subtitleText += " · " + formatSize(release.apkSize);
         }
+        TextView subtitle = text(subtitleText, 13, MUTED, false);
+        subtitle.setPadding(0, dp(6), 0, dp(12));
+        card.addView(subtitle);
+
+        TextView summary = text(getString(R.string.update_summary), 13, MUTED, false);
+        summary.setPadding(0, 0, 0, dp(4));
+        card.addView(summary);
 
         Button primary = primaryButton(getString(
                 release.apkUrl.isEmpty() ? R.string.open_release_page : R.string.update_now));

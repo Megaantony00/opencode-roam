@@ -55,9 +55,8 @@
     <string name="update_check_failed">Could not check for updates. Try again later.</string>
     <string name="update_available_title">Update available</string>
     <string name="update_available_message">OpenCode Roam %1$s is available. You are on %2$s.</string>
-    <string name="update_eyebrow">UPDATE</string>
-    <string name="update_version_line">You are on %1$s. The new version is %2$s.</string>
-    <string name="update_size">APK size: %1$s</string>
+    <string name="update_from_to">From %1$s to %2$s</string>
+    <string name="update_summary">Changes and fixes. Open the release page for details.</string>
     <string name="update_now">Update now</string>
     <string name="later">Later</string>
     <string name="open_release_page">Release page</string>
