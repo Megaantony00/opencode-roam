@@ -475,10 +475,6 @@ function isTableSeparator(row, columns) {
   return cells.length === columns && cells.every((cell) => /^:?-{3,}:?$/.test(cell))
 }
 
-function escapeRegExp(value) {
-  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-}
-
 function normalizeQuoteText(value) {
   return String(value ?? "")
     .replace(/\r/g, "")
@@ -487,58 +483,81 @@ function normalizeQuoteText(value) {
     .trim()
 }
 
+function buildTextMap(root) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+  const nodes = []
+  let text = ""
+  let node
+
+  while ((node = walker.nextNode())) {
+    const value = node.nodeValue || ""
+    if (!value) continue
+    nodes.push({ node, start: text.length, end: text.length + value.length })
+    text += value
+  }
+
+  return { text, nodes }
+}
+
+function normalizeWithMap(value) {
+  let text = ""
+  const map = []
+  let index = 0
+
+  while (index < value.length) {
+    if (/\s/.test(value[index])) {
+      const start = index
+      while (index < value.length && /\s/.test(value[index])) index += 1
+      text += " "
+      map.push(start)
+    } else {
+      text += value[index].toLowerCase()
+      map.push(index)
+      index += 1
+    }
+  }
+
+  return { text, map }
+}
+
+function offsetToNode(nodes, offset) {
+  for (const item of nodes) {
+    if (offset <= item.end) {
+      return {
+        node: item.node,
+        offset: Math.max(0, Math.min(item.node.nodeValue.length, offset - item.start)),
+      }
+    }
+  }
+
+  const last = nodes[nodes.length - 1]
+  return last ? { node: last.node, offset: last.node.nodeValue.length } : null
+}
+
 function findTextRange(root, needle) {
   const value = normalizeQuoteText(needle)
   if (value.length < 4) return null
 
-  const words = value.split(" ").filter(Boolean).slice(0, 12)
-  const pattern = new RegExp(words.map(escapeRegExp).join("\\s+"), "i")
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
-  let node
+  const { text: raw, nodes } = buildTextMap(root)
+  const { text: normalized, map } = normalizeWithMap(raw)
+  const index = normalized.indexOf(value.toLowerCase())
+  if (index < 0) return null
 
-  while ((node = walker.nextNode())) {
-    const text = node.nodeValue || ""
-    if (!text.trim()) continue
+  const start = offsetToNode(nodes, map[index])
+  const end = offsetToNode(nodes, map[index + value.length - 1] + 1)
+  if (!start || !end) return null
 
-    let start = text.toLowerCase().indexOf(value.toLowerCase())
-    let length = value.length
-
-    if (start < 0 && words.length > 1) {
-      const match = pattern.exec(text)
-      if (match) {
-        start = match.index
-        length = match[0].length
-      }
-    }
-
-    if (start < 0) continue
-
-    const range = document.createRange()
-    range.setStart(node, start)
-    range.setEnd(node, start + length)
-    return { range, target: node.parentElement || root }
-  }
-
-  return null
+  const range = document.createRange()
+  range.setStart(start.node, start.offset)
+  range.setEnd(end.node, end.offset)
+  return { range, target: start.node.parentElement || root }
 }
 
 function flashQuoteTarget(body, range) {
-  body.classList.remove("quote-target")
-  void body.offsetWidth
-  body.classList.add("quote-target")
-  setTimeout(() => body.classList.remove("quote-target"), 2800)
-
   if (!range) return
 
-  const rect = range.getBoundingClientRect()
-  if (rect && (rect.width || rect.height)) {
-    window.scrollTo({
-      top: Math.max(0, window.scrollY + rect.top - window.innerHeight / 2),
-      behavior: "smooth",
-    })
-  } else {
-    body.scrollIntoView({ behavior: "smooth", block: "center" })
-  }
+  const target = range.startContainer.parentElement || body
+  target.scrollIntoView({ block: "center" })
 
   if (window.CSS && CSS.highlights && typeof Highlight === "function") {
     CSS.highlights.set("quote-hit", new Highlight(range))
@@ -548,21 +567,24 @@ function flashQuoteTarget(body, range) {
       } catch {
         // The highlight API may be unavailable after a navigation.
       }
-    }, 2800)
-    return
+    }, 3200)
   }
 
-  if (range.startContainer !== range.endContainer) return
-  try {
-    const span = document.createElement("span")
-    span.className = "quote-hit-fallback"
-    range.surroundContents(span)
-    setTimeout(() => {
-      if (span.parentNode) span.replaceWith(document.createTextNode(span.textContent || ""))
-    }, 2800)
-  } catch {
-    // The range crosses elements; the message flash is still enough.
-  }
+  requestAnimationFrame(() => {
+    const rects = [...range.getClientRects()].filter((rect) => rect.width > 0 && rect.height > 0)
+    const overlays = rects.slice(0, 24).map((rect) => {
+      const overlay = document.createElement("div")
+      overlay.className = "quote-flash-overlay"
+      overlay.style.left = `${rect.left - 2}px`
+      overlay.style.top = `${rect.top - 1}px`
+      overlay.style.width = `${rect.width + 4}px`
+      overlay.style.height = `${rect.height + 2}px`
+      document.body.append(overlay)
+      return overlay
+    })
+
+    setTimeout(() => overlays.forEach((overlay) => overlay.remove()), 3200)
+  })
 }
 
 function jumpToQuote(blockquote) {
@@ -577,8 +599,9 @@ function jumpToQuote(blockquote) {
   const ordered = index >= 0
     ? [...all.slice(0, index).reverse(), ...all.slice(index + 1)]
     : all
-  const lengths = [120, 80, 60, 40, 24].filter((length) => length <= needle.length)
-  if (!lengths.includes(needle.length)) lengths.unshift(needle.length)
+  const lengths = [needle.length, 400, 240, 120, 80, 60, 40, 24].filter(
+    (length, position, list) => length <= needle.length && list.indexOf(length) === position,
+  )
 
   for (const wrap of ordered) {
     const body = wrap.querySelector(".msg")

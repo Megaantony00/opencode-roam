@@ -463,20 +463,25 @@ select {
   outline-offset: 2px;
 }
 
-.msg.quote-target {
-  animation: quote-pulse 0.65s ease-in-out 4;
+.quote-flash-overlay {
+  position: fixed;
+  z-index: 30;
+  border-radius: 3px;
+  pointer-events: none;
+  background: rgba(110, 168, 254, 0.22);
+  box-shadow: 0 0 0 1px rgba(110, 168, 254, 0.4);
+  animation: quote-text-pulse 0.55s ease-in-out 4;
 }
 
-@keyframes quote-pulse {
+@keyframes quote-text-pulse {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(110, 168, 254, 0);
+    background: rgba(110, 168, 254, 0.12);
+    box-shadow: 0 0 0 1px rgba(110, 168, 254, 0.3);
   }
-  35% {
-    box-shadow: 0 0 0 3px var(--accent), 0 0 22px rgba(110, 168, 254, 0.45);
-  }
-  65% {
-    box-shadow: 0 0 0 3px var(--ok), 0 0 22px rgba(52, 211, 153, 0.35);
+  50% {
+    background: rgba(52, 211, 153, 0.32);
+    box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.6);
   }
 }
 
@@ -485,16 +490,10 @@ select {
   color: #0f1115;
 }
 
-.quote-hit-fallback {
-  border-radius: 2px;
-  background: var(--accent);
-  color: #0f1115;
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .msg.quote-target {
+  .quote-flash-overlay {
     animation: none;
-    box-shadow: 0 0 0 2px var(--accent);
+    background: rgba(110, 168, 254, 0.28);
   }
 }
 
