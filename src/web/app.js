@@ -475,6 +475,125 @@ function isTableSeparator(row, columns) {
   return cells.length === columns && cells.every((cell) => /^:?-{3,}:?$/.test(cell))
 }
 
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+}
+
+function normalizeQuoteText(value) {
+  return String(value ?? "")
+    .replace(/\r/g, "")
+    .replace(/…\s*$/, "")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
+function findTextRange(root, needle) {
+  const value = normalizeQuoteText(needle)
+  if (value.length < 4) return null
+
+  const words = value.split(" ").filter(Boolean).slice(0, 12)
+  const pattern = new RegExp(words.map(escapeRegExp).join("\\s+"), "i")
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+  let node
+
+  while ((node = walker.nextNode())) {
+    const text = node.nodeValue || ""
+    if (!text.trim()) continue
+
+    let start = text.toLowerCase().indexOf(value.toLowerCase())
+    let length = value.length
+
+    if (start < 0 && words.length > 1) {
+      const match = pattern.exec(text)
+      if (match) {
+        start = match.index
+        length = match[0].length
+      }
+    }
+
+    if (start < 0) continue
+
+    const range = document.createRange()
+    range.setStart(node, start)
+    range.setEnd(node, start + length)
+    return { range, target: node.parentElement || root }
+  }
+
+  return null
+}
+
+function flashQuoteTarget(body, range) {
+  body.classList.remove("quote-target")
+  void body.offsetWidth
+  body.classList.add("quote-target")
+  setTimeout(() => body.classList.remove("quote-target"), 2800)
+
+  if (!range) return
+
+  const rect = range.getBoundingClientRect()
+  if (rect && (rect.width || rect.height)) {
+    window.scrollTo({
+      top: Math.max(0, window.scrollY + rect.top - window.innerHeight / 2),
+      behavior: "smooth",
+    })
+  } else {
+    body.scrollIntoView({ behavior: "smooth", block: "center" })
+  }
+
+  if (window.CSS && CSS.highlights && typeof Highlight === "function") {
+    CSS.highlights.set("quote-hit", new Highlight(range))
+    setTimeout(() => {
+      try {
+        CSS.highlights.delete("quote-hit")
+      } catch {
+        // The highlight API may be unavailable after a navigation.
+      }
+    }, 2800)
+    return
+  }
+
+  if (range.startContainer !== range.endContainer) return
+  try {
+    const span = document.createElement("span")
+    span.className = "quote-hit-fallback"
+    range.surroundContents(span)
+    setTimeout(() => {
+      if (span.parentNode) span.replaceWith(document.createTextNode(span.textContent || ""))
+    }, 2800)
+  } catch {
+    // The range crosses elements; the message flash is still enough.
+  }
+}
+
+function jumpToQuote(blockquote) {
+  if (String(window.getSelection()?.toString() || "").trim()) return
+
+  const needle = normalizeQuoteText(blockquote.textContent)
+  if (needle.length < 4) return
+
+  const source = blockquote.closest(".msg-wrap")
+  const all = [...chat.querySelectorAll(".msg-wrap")]
+  const index = all.indexOf(source)
+  const ordered = index >= 0
+    ? [...all.slice(0, index).reverse(), ...all.slice(index + 1)]
+    : all
+  const lengths = [120, 80, 60, 40, 24].filter((length) => length <= needle.length)
+  if (!lengths.includes(needle.length)) lengths.unshift(needle.length)
+
+  for (const wrap of ordered) {
+    const body = wrap.querySelector(".msg")
+    if (!body) continue
+    for (const length of lengths) {
+      const found = findTextRange(body, needle.slice(0, length))
+      if (!found) continue
+      flashQuoteTarget(body, found.range)
+      return
+    }
+  }
+
+  localEntry("notice", t("quote.notFound"))
+}
+
 function renderMarkdown(text) {
   const fragment = document.createDocumentFragment()
   const lines = String(text ?? "").replace(/\r\n/g, "\n").split("\n")
@@ -525,7 +644,24 @@ function renderMarkdown(text) {
         quote.push(lines[index].replace(/^>\s?/, ""))
         index++
       }
-      fragment.append(h("blockquote", {}, renderInline(quote.join("\n"))))
+      const block = h(
+        "blockquote",
+        {
+          class: "quote-link",
+          title: t("quote.jumpTitle"),
+          role: "link",
+          tabindex: "0",
+        },
+        renderInline(quote.join("\n")),
+      )
+      const activate = () => jumpToQuote(block)
+      block.addEventListener("click", activate)
+      block.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return
+        event.preventDefault()
+        activate()
+      })
+      fragment.append(block)
       continue
     }
 

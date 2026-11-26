@@ -29,7 +29,8 @@ self-hosted remote control for it:
 ## Features
 
 - Web UI/PWA: chat, session switching, history, attachments, Markdown, quote and
-  copy actions.
+  copy actions; clicking a quoted block jumps to the source message and
+  highlights the quoted text.
 - Permission and form approval from the browser.
 - Optional Telegram bot with the same permission/form flow.
 - PWA installable from Chrome, with an offline page and a Tailscale-off notice.
