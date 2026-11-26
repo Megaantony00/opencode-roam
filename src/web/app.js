@@ -499,22 +499,14 @@ function buildTextMap(root) {
   return { text, nodes }
 }
 
-function normalizeWithMap(value) {
+function compactWithMap(value) {
   let text = ""
   const map = []
-  let index = 0
 
-  while (index < value.length) {
-    if (/\s/.test(value[index])) {
-      const start = index
-      while (index < value.length && /\s/.test(value[index])) index += 1
-      text += " "
-      map.push(start)
-    } else {
-      text += value[index].toLowerCase()
-      map.push(index)
-      index += 1
-    }
+  for (let index = 0; index < value.length; index += 1) {
+    if (/\s/.test(value[index])) continue
+    text += value[index].toLowerCase()
+    map.push(index)
   }
 
   return { text, map }
@@ -538,13 +530,16 @@ function findTextRange(root, needle) {
   const value = normalizeQuoteText(needle)
   if (value.length < 4) return null
 
+  const compactNeedle = value.replace(/\s+/g, "").toLowerCase()
+  if (!compactNeedle) return null
+
   const { text: raw, nodes } = buildTextMap(root)
-  const { text: normalized, map } = normalizeWithMap(raw)
-  const index = normalized.indexOf(value.toLowerCase())
+  const { text: compact, map } = compactWithMap(raw)
+  const index = compact.indexOf(compactNeedle)
   if (index < 0) return null
 
   const start = offsetToNode(nodes, map[index])
-  const end = offsetToNode(nodes, map[index + value.length - 1] + 1)
+  const end = offsetToNode(nodes, map[index + compactNeedle.length - 1] + 1)
   if (!start || !end) return null
 
   const range = document.createRange()
@@ -569,22 +564,6 @@ function flashQuoteTarget(body, range) {
       }
     }, 3200)
   }
-
-  requestAnimationFrame(() => {
-    const rects = [...range.getClientRects()].filter((rect) => rect.width > 0 && rect.height > 0)
-    const overlays = rects.slice(0, 24).map((rect) => {
-      const overlay = document.createElement("div")
-      overlay.className = "quote-flash-overlay"
-      overlay.style.left = `${rect.left - 2}px`
-      overlay.style.top = `${rect.top - 1}px`
-      overlay.style.width = `${rect.width + 4}px`
-      overlay.style.height = `${rect.height + 2}px`
-      document.body.append(overlay)
-      return overlay
-    })
-
-    setTimeout(() => overlays.forEach((overlay) => overlay.remove()), 3200)
-  })
 }
 
 function jumpToQuote(blockquote) {
@@ -599,19 +578,14 @@ function jumpToQuote(blockquote) {
   const ordered = index >= 0
     ? [...all.slice(0, index).reverse(), ...all.slice(index + 1)]
     : all
-  const lengths = [needle.length, 400, 240, 120, 80, 60, 40, 24].filter(
-    (length, position, list) => length <= needle.length && list.indexOf(length) === position,
-  )
 
   for (const wrap of ordered) {
     const body = wrap.querySelector(".msg")
     if (!body) continue
-    for (const length of lengths) {
-      const found = findTextRange(body, needle.slice(0, length))
-      if (!found) continue
-      flashQuoteTarget(body, found.range)
-      return
-    }
+    const found = findTextRange(body, needle)
+    if (!found) continue
+    flashQuoteTarget(body, found.range)
+    return
   }
 
   localEntry("notice", t("quote.notFound"))

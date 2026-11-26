@@ -463,38 +463,9 @@ select {
   outline-offset: 2px;
 }
 
-.quote-flash-overlay {
-  position: fixed;
-  z-index: 30;
-  border-radius: 3px;
-  pointer-events: none;
-  background: rgba(110, 168, 254, 0.22);
-  box-shadow: 0 0 0 1px rgba(110, 168, 254, 0.4);
-  animation: quote-text-pulse 0.55s ease-in-out 4;
-}
-
-@keyframes quote-text-pulse {
-  0%,
-  100% {
-    background: rgba(110, 168, 254, 0.12);
-    box-shadow: 0 0 0 1px rgba(110, 168, 254, 0.3);
-  }
-  50% {
-    background: rgba(52, 211, 153, 0.32);
-    box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.6);
-  }
-}
-
 ::highlight(quote-hit) {
   background-color: var(--accent);
   color: #0f1115;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .quote-flash-overlay {
-    animation: none;
-    background: rgba(110, 168, 254, 0.28);
-  }
 }
 
 .msg.markdown blockquote p {
