@@ -60,15 +60,12 @@ account or token data.
 
 ## Architecture
 
-```text
-┌──────────────────────┐        ┌──────────────────────────────┐
-│ Phone / tablet       │        │ PC                            │
-│                      │        │                              │
-│ Chrome PWA           │──TS──▶ │ tailscale serve              │
-│ (or optional APK)    │        │   └─ 127.0.0.1:8787          │
-│                      │        │       ├─ OpenCode local API  │
-│                      │        │       └─ Telegram (optional)│
-└──────────────────────┘        └──────────────────────────────┘
+```mermaid
+flowchart LR
+  A["Phone / tablet<br/>Chrome PWA or APK"] -->|Tailscale| B["tailscale serve"]
+  B --> C["OpenCode Roam bridge<br/>127.0.0.1:8787"]
+  C --> D["OpenCode local API"]
+  C -. optional .-> E["Telegram Bot API"]
 ```
 
 - The Node bridge talks to the local OpenCode service.
@@ -400,12 +397,14 @@ Remove it with `uninstall-autostart.ps1`. The startup entry runs
 
 ## Roadmap
 
-- Android wrapper in `android/`: native **Quote** action, text share target,
-  offline/Tailscale screen, encrypted token, settings to change the bridge
-  URL/token later, logout, language switch, version, update check, and in-app
-  APK update. Signed GitHub releases are available; store distribution is next.
-- Demo screenshots generated with fake data.
-- Optional Docker packaging.
+- Store distribution for the Android APK (Google Play / F-Droid).
+- Optional web push notifications, so Telegram is not required for alerts.
+- Streaming assistant output if the OpenCode API exposes it.
+
+The Android wrapper, signed GitHub releases, in-app updates, and fake-data
+screenshots are already available. Docker packaging is not planned: the bridge
+needs the host OpenCode service, Tailscale, and Windows-specific autostart and
+presence helpers, so a container would add complexity without a real benefit.
 
 ## Contributing
 
